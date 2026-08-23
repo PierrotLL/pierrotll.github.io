@@ -200,7 +200,7 @@ select, input[type="text"] { width: 9em }
 		<button onclick="[menu.style.maxHeight, this.firstChild.style.rotate] = menu.style.maxHeight ? ['', ''] : ['16em', '45deg']"><div style="transition:.4s">+</div></button>
 		<label for=cubeSize>Cube size</label>
 		<div>
-			<select id=cubeSize name=size onchange="buildCube(this.value); history.clear(); save.erase();">
+			<select id=cubeSize onchange="buildCube(this.value); history.clear(); save.erase();">
 				<option value=2>2x2x2</option>
 				<option value=3>3x3x3</option>
 				<option value=4>4x4x4</option>
@@ -210,12 +210,12 @@ select, input[type="text"] { width: 9em }
 		</div>
 		<label for=move>Movements input</label>
 		<form onsubmit="parseInput(move.value); move.value=move.placeholder=''; return false">
-			<input type=text id=move name=move placeholder="L R' U2 d Fw x" autocomplete="off" />
+			<input type=text id=move placeholder="L R' U2 d Fw x" autocomplete="off" />
 			<input type=submit value="Apply" style="flex-grow:1" />
 		</form>
 		<label for=history>History</label>
 		<div>
-			<input type=text id=history name=history autocomplete="off" disabled />
+			<input type=text id=history autocomplete="off" disabled />
 			<button id=backward onclick="history.back()" disabled>&lt;</button>
 			<button id=forward onclick="history.forward()" disabled>&gt;</button>
 		</div>
@@ -732,16 +732,19 @@ class Ease {
 	static easeInOutCubic = t=>t<.5 ? 4*t**3 : 1-(-2*t+2)**3/2;
 }
 
+
 function benchmark(fn, iterations) {
 	for (let name in fn) {
 		let start = performance.now();
-		for (let i=0 ; i<iterations ; i++) fn[name]();
+		while(iterations--) fn[name]();
 		console.log(name, performance.now() - start);
 	}
 }
 
+
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
 addEventListener("beforeinstallprompt", e => {
+	e.preventDefault();
 	a2hs.removeAttribute("hidden");
 	a2hs.onclick = _=> {
 		a2hs.setAttribute("hidden", "");

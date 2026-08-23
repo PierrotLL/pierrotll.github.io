@@ -21,21 +21,22 @@ self.addEventListener("activate", e => {
 	);
 });
 
-/*self.addEventListener("fetch", e => {
+self.addEventListener("fetch", e => {
 	e.respondWith(
 		Promise.race([
 			caches.match(e.request),
 			fetch(e.request)
-				.then(r => {
+				.then(response => {
+					let clone = response.clone();
 					caches.open(cacheName)
-					.then(cache => cache.put(e.request, r));
-					return r;
+						.then(cache => cache.put(e.request, clone));
+					return response;
 				})
 		])
 	);
-});*/
-self.addEventListener('fetch', e => {
+});
+/*self.addEventListener('fetch', e => {
 	e.respondWith(
 		caches.match(e.request).then(response => response || fetch(e.request))
 	);
-});
+});*/
