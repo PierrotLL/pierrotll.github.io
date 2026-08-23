@@ -2,11 +2,6 @@
 <title>Rubik's Cube</title>
 <link rel="icon" type="image/png" href="icon-256.png" />
 <meta name="viewport" content="width=device-width,initial-scale=1.0,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no,interactive-widget=resizes-content" />
-<link rel="manifest" href="manifest.json" />
-
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-<meta http-equiv="Pragma" content="no-cache" />
-<meta http-equiv="Expires" content="0" />
 
 <style>
 html { height: 100% }
@@ -181,16 +176,6 @@ select, input[type="text"] { width: 9em }
 	 80% { opacity: 1 }
 	100% { opacity: 0 }
 }
-
-#a2hs {
-	position: fixed;
-	top: 0;
-	right: 0;
-	margin: 1em;
-	display: none;
-	opacity: 0;
-	transition: opacity .5s;
-}
 </style>
 
 <body>
@@ -225,7 +210,6 @@ select, input[type="text"] { width: 9em }
 	<button id=helpButton><div><div id=help></div></div></button>
 	<div id=fps></div>
 	<div id=saveIcon>&#128190;</div>
-	<button id=a2hs>&#128242; Install</button>
 </body>
 
 <script>
@@ -742,18 +726,7 @@ function benchmark(fn, iterations) {
 		console.log(name, performance.now() - start);
 	}
 }
-
-
-if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
-addEventListener("beforeinstallprompt", e => {
-	e.preventDefault();
-	setTimeout(_=> {
-		a2hs.style.display = "unset";
-		requestAnimationFrame(_=> a2hs.style.opacity = 1);
-	}, 1e3);
-	a2hs.onclick = _=> {
-		a2hs.style.display = "none";
-		e.prompt();
-	}
-});
 </script>
+
+<link rel="manifest" href="manifest.json" />
+<script>if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");</script>
