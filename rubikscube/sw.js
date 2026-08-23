@@ -1,37 +1,44 @@
-const cacheName = "2026-08-23";
-const contentToCache = [
-	"index.html",
-	"manifest.json",
-	"icon_256.png",
+const cacheName = "solitaire-v1";
+const appShellFiles = [
+  "index.html",
+  "solitaire.css",
+  "config.js",
+  "solitaire.js",
 ];
+const contentToCache = appShellFiles;
 
-self.addEventListener("install", e => {
+self.addEventListener("install", (e) => {
 	e.waitUntil(
 		caches.open(cacheName)
 		.then(cache => cache.addAll(contentToCache))
 	);
 });
 
-self.addEventListener("activate", e => {
-	e.waitUntil(
-		caches.keys()
-		.then(keys => Promise.all(
-			keys.reduce(key => key != cacheName)
-				.map(caches.delete)
-		))
-	);
-});
-
-self.addEventListener("fetch", e => {
+self.addEventListener("fetch", (e) => {
 	e.respondWith(
 		Promise.race([
 			caches.match(e.request),
 			fetch(e.request)
-				.then(response => {
+				.then(r => {
 					caches.open(cacheName)
-					.then(cache => cache.put(e.request, response));
-					return response;
+					.then(cache => cache.put(e.request, r));
+					return r;
 				})
 		])
 	);
+});
+
+self.addEventListener("activate", (e) => {
+  e.waitUntil(
+    caches.keys().then((keyList) => {
+      return Promise.all(
+        keyList.map((key) => {
+          if (key === cacheName) {
+            return;
+          }
+          return caches.delete(key);
+        }),
+      );
+    }),
+  );
 });
