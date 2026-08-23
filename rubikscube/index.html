@@ -179,16 +179,6 @@ select, input[type="text"] { width: 9em }
 	 80% { opacity: 1 }
 	100% { opacity: 0 }
 }
-
-#a2hs {
-	position: fixed;
-	top: 0;
-	right: 0;
-	margin: 1em;
-	display: none;
-	opacity: 0;
-	transition: opacity .5s;
-}
 </style>
 
 <body>
@@ -223,7 +213,6 @@ select, input[type="text"] { width: 9em }
 	<button id=helpButton><div><div id=help></div></div></button>
 	<div id=fps></div>
 	<div id=saveIcon>&#128190;</div>
-	<button id=a2hs>&#128242; Install</button>
 </body>
 
 <script>
@@ -740,18 +729,4 @@ function benchmark(fn, iterations) {
 		console.log(name, performance.now() - start);
 	}
 }
-
-
-if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
-addEventListener("beforeinstallprompt", e => {
-	e.preventDefault();
-	setTimeout(_=> {
-		a2hs.style.display = "unset";
-		requestAnimationFrame(_=> a2hs.style.opacity = 1);
-	}, 1e3);
-	a2hs.onclick = _=> {
-		a2hs.style.display = "none";
-		e.prompt();
-	}
-});
 </script>
