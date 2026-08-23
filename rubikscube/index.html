@@ -189,7 +189,7 @@ select, input[type="text"] { width: 9em }
 	margin: 1em;
 	display: none;
 	opacity: 0;
-	transition: .5s;
+	transition: opacity .5s;
 }
 </style>
 
@@ -749,8 +749,8 @@ addEventListener("beforeinstallprompt", e => {
 	e.preventDefault();
 	setTimeout(_=> {
 		a2hs.style.display = "unset";
-		a2hs.style.opacity = 1;
-	}, 2e3);
+		requestAnimationFrame(_=> a2hs.style.opacity = 1);
+	}, 1e3);
 	a2hs.onclick = _=> {
 		a2hs.style.display = "none";
 		e.prompt();
