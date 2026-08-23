@@ -4,10 +4,9 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no,interactive-widget=resizes-content" />
 <link rel="manifest" href="manifest.json" />
 
-<meta http-equiv="cache-control" content="no-cache, must-revalidate" />
-<meta http-equiv="cache-control" content="max-age=0" />
-<meta http-equiv="expires" content="Tue, 01 Jan 1980 1:00:00 GMT" />
-<meta http-equiv="pragma" content="no-cache" />
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="0" />
 
 <style>
 html { height: 100% }
@@ -188,6 +187,7 @@ select, input[type="text"] { width: 9em }
 	top: 0;
 	right: 0;
 	margin: 1em;
+	display: none;
 	opacity: 0;
 	transition: .5s;
 }
@@ -225,7 +225,7 @@ select, input[type="text"] { width: 9em }
 	<button id=helpButton><div><div id=help></div></div></button>
 	<div id=fps></div>
 	<div id=saveIcon>&#128190;</div>
-	<button id=a2hs hidden>&#128242; Install</button>
+	<button id=a2hs>&#128242; Install</button>
 </body>
 
 <script>
@@ -748,11 +748,11 @@ if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
 addEventListener("beforeinstallprompt", e => {
 	e.preventDefault();
 	setTimeout(_=> {
-		a2hs.removeAttribute("hidden");
+		a2hs.style.display = "unset";
 		a2hs.style.opacity = 1;
-	}, 1);
+	}, 2e3);
 	a2hs.onclick = _=> {
-		a2hs.setAttribute("hidden", "");
+		a2hs.style.display = "none";
 		e.prompt();
 	}
 });
