@@ -188,6 +188,8 @@ select, input[type="text"] { width: 9em }
 	top: 0;
 	right: 0;
 	margin: 1em;
+	opacity: 0;
+	transition: .5s;
 }
 </style>
 
@@ -745,7 +747,10 @@ function benchmark(fn, iterations) {
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
 addEventListener("beforeinstallprompt", e => {
 	e.preventDefault();
-	a2hs.removeAttribute("hidden");
+	setTimeout(_=> {
+		a2hs.removeAttribute("hidden");
+		a2hs.style.opacity = 1;
+	}, 1);
 	a2hs.onclick = _=> {
 		a2hs.setAttribute("hidden", "");
 		e.prompt();
