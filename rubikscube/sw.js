@@ -2,7 +2,7 @@ const cacheName = "2026-08-23";
 const contentToCache = [
 	"index.html",
 	"manifest.json",
-	"icon_256.png",
+	"icon-256.png",
 ];
 
 self.addEventListener("install", e => {
