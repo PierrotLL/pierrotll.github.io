@@ -681,7 +681,7 @@ function fpsCounter(now) {
 	requestAnimationFrame(fpsCounter);
 	
 	if (now-last > 40 && !document.hidden) slowFrames++; else slowFrames=0;
-	if (slowFrames == 4) { cube.classList.add("flat"); helper.show("High performance mode enabled."); }
+	if (slowFrames == 4) { cube.classList.add("flat"); helper.show("Low framerate detected.<br>Switched to simpler graphics mode."); }
 	last = now;
 }
 fpsCounter(0);
