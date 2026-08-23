@@ -2,7 +2,9 @@
 <title>Rubik's Cube</title>
 <link rel="icon" type="image/png" href="icon-256.png" />
 <meta name="viewport" content="width=device-width,initial-scale=1.0,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no,interactive-widget=resizes-content" />
+
 <link rel="manifest" href="manifest.json" />
+<script>if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");</script>
 
 <style>
 html { height: 100% }
@@ -727,7 +729,4 @@ function benchmark(fn, iterations) {
 		console.log(name, performance.now() - start);
 	}
 }
-
-
-if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js");
 </script>
