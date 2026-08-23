@@ -137,9 +137,9 @@ select, input[type="text"] { width: 9em }
 #helpButton > div {
 	max-width: calc(var(--max-width) - 2em);
 	max-height: 10em;
-	transition: max-width .5s, max-height .5s .5s;
+	transition: max-width .5s, max-height .5s .3s;
 }
-#helpButton > div:has(:empty) {
+#helpButton > div:has(#help:empty) {
 	max-width: 0;
 	max-height: calc(2em - 2px);
 }
