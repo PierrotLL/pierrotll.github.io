@@ -1,0 +1,14 @@
+{
+	"name": "Piano Trainer",
+	"short_name": "Piano",
+	"description": "Train your sheet music reading skills.",
+	"display": "standalone",
+	"start_url": "./piano.html",
+	"icons": [{
+		"src": "icon-512-white.png",
+		"sizes": "512x512",
+		"type": "image/png"
+	}],
+	"background_color": "#FFFFFF",
+	"theme_color": "#FFFFFF"
+}

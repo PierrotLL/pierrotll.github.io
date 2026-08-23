@@ -1,0 +1,14 @@
+{
+	"name": "Rubik's Cube",
+	"short_name": "Rubik's Cube",
+	"description": "Created by PierrotLL",
+	"display": "standalone",
+	"start_url": "./rubikscube.html",
+	"icons": [{
+		"src": "icon-512.png",
+		"sizes": "512x512",
+		"type": "image/png"
+	}],
+	"background_color": "#555555",
+	"theme_color": "#000000"
+}

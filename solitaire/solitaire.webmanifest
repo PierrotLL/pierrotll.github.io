@@ -1,0 +1,14 @@
+{
+	"name": "Solitaire",
+	"short_name": "Solitaire",
+	"description": "Peg-solitaire solver by PierrotLL",
+	"display": "standalone",
+	"start_url": "./solitaire.html",
+	"icons": [{
+		"src": "icon-512-bg.png",
+		"type": "image/png",
+		"sizes": "512x512"
+	}],
+	"background_color": "#043007",
+	"theme_color": "#043007"
+}
