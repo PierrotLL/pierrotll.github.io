@@ -1,4 +1,4 @@
-const cacheName = "2026-08-23";
+const cacheName = "2026-08-23-v2";
 const contentToCache = [
 	"index.html",
 	"manifest.json",
