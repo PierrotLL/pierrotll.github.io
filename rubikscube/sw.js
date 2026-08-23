@@ -22,7 +22,7 @@ self.addEventListener("activate", e => {
 	);
 });
 
-self.addEventListener("fetch", e => {
+/*self.addEventListener("fetch", e => {
 	e.respondWith(
 		Promise.race([
 			caches.match(e.request),
@@ -33,5 +33,10 @@ self.addEventListener("fetch", e => {
 					return r;
 				})
 		])
+	);
+});*/
+self.addEventListener('fetch', e => {
+	e.respondWith(
+		caches.match(e.request).then(response => response || fetch(e.request))
 	);
 });
