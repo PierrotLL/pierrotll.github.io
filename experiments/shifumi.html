@@ -1,0 +1,81 @@
+<style>
+html { overflow: hidden; background: lightblue; }
+.particle {
+	position: absolute;
+	translate: -50% -50%;
+}
+</style>
+<script>
+const img = ["&#128074;", "&#128196;", "&#9986;"];
+const particles = [];
+function addParticle(opts) {
+	const o = Object.assign({
+		type: Math.floor(Math.random() * 3),
+		radius: Math.random() * 20 + 20,
+		x: Math.random() * innerWidth,
+		y: Math.random() * innerHeight,
+		dx: Math.random()*4-2,
+		dy: Math.random()*4-2,
+	}, opts);
+	particles.push(Object.assign(o, {
+		mass: o.radius**1.5,
+		element: document.body.appendChild(
+			Object.assign(
+				document.createElement("div"),
+				{ className: "particle", style: "font-size:"+(o.radius*2)+"px;", innerHTML: img[o.type] },
+			)
+		),
+	}));
+}
+let lastTime;
+function frame(now) {
+	lastTime ||= now;
+	let elapsed = Math.min(now - lastTime, 500);
+	lastTime = now;
+	for (let i=0, l=particles.length ; i<l ; i++) {
+		let p = particles[i];
+		for (let j=i+1 ; j<l ; j++) {
+			let p2 = particles[j],
+				dx = p2.x-p.x,
+				dy = p2.y-p.y,
+				h = p2.radius+p.radius;
+			if (dx*dx+dy*dy <= h*h) {
+				let angle = Math.atan2(dy, dx),
+					cos = Math.cos(angle),
+					sin = Math.sin(angle);
+				p.x = p2.x-h*cos;
+				p.y = p2.y-h*sin;
+				let nx = (p.x-p2.x)/h,
+					ny = (p.y-p2.y)/h,
+					v = 2 * (p.dx*nx + p.dy*ny - p2.dx*nx - p2.dy*ny) / (p.mass+p2.mass);
+				p.dx  -= v*nx*p2.mass;
+				p.dy  -= v*ny*p2.mass;
+				p2.dx += v*nx*p.mass;
+				p2.dy += v*ny*p.mass;
+				
+				if ((p.type+1)%3 == p2.type) {
+					p.type = p2.type;
+					p.element.innerHTML = p2.element.innerHTML;
+				} else {
+					p2.type = p.type;
+					p2.element.innerHTML = p.element.innerHTML;
+				} 
+			}
+		}
+		if (p.x-p.radius <= 0) p.dx = Math.abs(p.dx);
+		if (p.x+p.radius >= innerWidth) p.dx = -Math.abs(p.dx);
+		if (p.y-p.radius <= 0) p.dy = Math.abs(p.dy);
+		if (p.y+p.radius >= innerHeight) p.dy = -Math.abs(p.dy);
+		p.x += p.dx * elapsed*.001*60;
+		p.y += p.dy * elapsed*.001*60;
+		p.element.style.left = p.x+"px";
+		p.element.style.top = p.y+"px";
+	}
+	requestAnimationFrame(frame);
+}
+
+document.addEventListener("DOMContentLoaded", _=> {
+	for (let i=0 ; i<100 ; i++) addParticle();
+	frame(1);
+});
+</script>

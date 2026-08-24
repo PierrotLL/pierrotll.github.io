@@ -1,4 +1,4 @@
-const cacheName = "2026-08-23-v3";
+const cacheName = "2026-08-24";
 const contentToCache = [
 	"rubikscube.html",
 	"rubikscube.webmanifest",
@@ -22,14 +22,15 @@ self.addEventListener("activate", e => {
 
 self.addEventListener("fetch", e => {
 	e.respondWith(
-		Promise.race([
-			caches.match(e.request),
+		caches.match(e.request)
+		.then(cacheResponse =>
+			cacheResponse ||
 			fetch(e.request)
-				.then(response => {
-					let clone = response.clone();
-					caches.open(cacheName).then(cache => cache.put(e.request, clone));
-					return response;
-				})
-		])
+			.then(fetchResponse => {
+				let clone = fetchResponse.clone();
+				caches.open(cacheName).then(cache => cache.put(e.request, clone));
+				return fetchResponse;
+			})
+		)
 	);
 });
