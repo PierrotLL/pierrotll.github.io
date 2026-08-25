@@ -40,7 +40,7 @@ main {
 nav {
 	box-sizing: border-box;
 	height: 100%;
-	padding: calc(100% / 120 * 4);
+	padding: calc(100% / 120 * 4); /* Screen width divided into 120ths. App icon = 16*120ths, app margin=5*120ths */
 	overflow: auto;
 	scrollbar-width: none;
 }
@@ -89,8 +89,8 @@ folder {
 	transition: padding .5s;
 }
 folder app {
-	margin: calc(100% / 78 * 5);
-	width:  calc(100% / 78 * 16);
+	margin: calc(100% / 36);
+	width: calc(100% / 36 * 10);
 }
 folder app:nth-child(n+10) {
 	display: none;
@@ -134,8 +134,8 @@ app.open {
 }
 .open app {
 	display: inline-block !important;
-	margin: calc(100% / 15);
-	width:  calc(100% / 15 * 3);
+	margin: calc(100% / 78 * 5);
+	width:  calc(100% / 78 * 16);
 }
 .open app name {
 	display: block;
