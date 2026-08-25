@@ -78,18 +78,21 @@ rotateCube(1,1,1);
 
 cube.addEventListener("mousemove", e=>{ if (!grabbing) cursor("grab"); });
 cube.addEventListener("mouseout", e=>{ if (!grabbing) cursor("auto"); });
-cube.addEventListener("pointerdown", pointerdown);
-window.addEventListener("pointermove", pointermove, { passive: false });
-window.addEventListener("pointerup", pointerup);
+cube.addEventListener("mousedown", touchstart);
+cube.addEventListener("touchstart", touchstart);
+window.addEventListener("mousemove", touchmove);
+window.addEventListener("touchmove", touchmove, { passive: false });
+window.addEventListener("mouseup", touchend);
+window.addEventListener("touchend", touchend);
 
-function pointerdown(e) {
+function touchstart(e) {
 	cursor("grabbing");
 	grabbing = true;
 	x = e.x || e.touches[0].clientX;
 	y = e.y || e.touches[0].clientY;
 	cancelAnimationFrame(animation);
 }
-function pointermove(e) {
+function touchmove(e) {
 	if (grabbing) {
 		e.preventDefault(); // prevent refresh on mobile
 		e.x ||= e.touches[0].clientX;
@@ -101,7 +104,7 @@ function pointermove(e) {
 		rotateCube(dy/200, -dx/200, 0);
 	}
 }
-function pointerup(e) {
+function touchend(e) {
 	cursor("auto");
 	grabbing = false;
 	animation = requestAnimationFrame(frame);
