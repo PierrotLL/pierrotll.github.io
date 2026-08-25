@@ -5,6 +5,7 @@ function isRunningStandalone() {
 onload = _=> {
 	if (isRunningStandalone()) return;
 	installButton = document.createElement("button");
+	installButton.setAttribute("id", "installButton");
 	installButton.innerHTML = "&#128242; Install";
 	installButton.style = "position:absolute; top:0; right:0; margin:1em; opacity:0; transition:1s;";
 	
