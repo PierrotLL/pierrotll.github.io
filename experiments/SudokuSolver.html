@@ -1,6 +1,7 @@
+<!DOCTYPE html>
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
 <style>
-#template { display: none; }
-
+body { width: max-content; margin: auto }
 .grid {
 	width: fit-content;
 	display: grid;
@@ -12,7 +13,7 @@
 	border: solid 3px lightgray;
 	border-style: none solid solid none;
 	width: 50px;
-	height: 50px;
+	aspect-ratio: 1;
 }
 .cell:nth-child(-n+9) { border-top-style: solid;  border-top-color: darkgray;}
 .cell:nth-child(9n+1) { border-left-style: solid;  border-left-color: darkgray;}
@@ -21,6 +22,7 @@
 .cell * {
 	width: 100%;
 	height: 100%;
+	box-sizing: border-box;
 	font-size: 32px;
 	border: none;
 	text-align: center;
@@ -37,16 +39,40 @@
 	z-index: -1;
 }
 .candidates * { font-size: 13px; visibility: hidden; }
+
+p input, select, button { padding: 8px 16px; }
+option:checked { font-weight: bold; }
 </style>
 
-<select></select>
-<input type=text />
+<p>
+<select onchange="setGrid(strToGrid(this.value), true)">
+	<option value="000000000000000000000000000000000000000000000000000000000000000000000000000000000">Empty</option>
+	<option value="050703060007000800000816000000030000005000100730040086906000204840572093000409000">Easy 1.2</option>
+	<option value="302401809001000300000000000040708010780502036000090000200609003900000008800070005">Easy 1.2</option>
+	<option value="000823001003000400070000052300960010000102000010038006830000040002000900600789000">Easy 1.2</option>
+	<option value="802600009000058000006000401090406005020000040600203090205000900000970000100002804">Medium 1.7</option>
+	<option value="100800570000009210090040000300900050007000300020006008000020040071400000064007003">Medium 2.0</option>
+	<option value="020900000048000031000063020009407003003080200400105600030570000250000180000006050">Medium 2.3</option>
+	<option value="600050007030000000080409200015300000008000300000007590009501030000000080200070004">Hard 2.6</option>
+	<option value="080200400570000100002300000820090005000715000700020041000006700003000018007009050">Hard 3.4</option>
+	<option value="210950004090060037000700000000000308920000015805000000000002000680010040100047096">Hard 4.3</option>
+	<option value="000000000560000032230040079000060000070501090000708000053000920009806500700000004">Diabolical 6.6</option>
+	<option value="083020090000800100029300008000098700070000060006740000300006980002005000010030540">Diabolical 7.2</option>
+	<option value="006000200900000004243000896000591000002080300400203001300000007000907000010408020">Diabolical 8.2</option>
+	<option value="700040006000759000900801003000524000030000020400000007501000208080000010209000304">Diabolical 8.9</option>
+	<option value="006401500300509001000030000205000703030040020670000058060907080000050000002304900">Diabolical 9.1</option>
+	<option value="800000000003600000070090200050007000000045700000100030001000068008500010090000400" selected>Arto Inkala's Hardest</option>
+</select>
+<input type=text oninput="setGrid(strToGrid(this.value), true)" onkeydown="setGrid(strToGrid(this.value), true)" />
+</p>
 <div class=grid></div>
-<input type=button id=solve value=Solve />
-<input type=button id=step value=Step />
-<input type=button id=stepback value=" << " disabled />
-
-<div id=template>
+<p>
+<button id=solveButton>Solve</button>
+<button id=stepButton>Step</button>
+<button id=backButton disabled> &lt;&lt; </button>
+<input type=text id=solveDuration readonly placeholder="Solve duration"/>
+</p>
+<div id=template hidden>
 	<div class=cell>
 		<input type=text maxLength=1 placeholder="" autocomplete="off" />
 		<div class=candidates></div>
@@ -55,7 +81,7 @@
 
 <script>
 let grid = document.querySelector(".grid");
-let cell = document.querySelector("#template .cell");
+let cell = template.querySelector(".cell");
 for (let i=0 ; i<9 ; i++) cell.querySelector(".candidates").innerHTML += "<div>"+(i+1)+"</div>";
 for (let i=0 ; i<9*9 ; i++) grid.append(cell.cloneNode(true));
 
@@ -485,6 +511,7 @@ class SudokuSolver {
 			this.states.push(this.getCurrentState());
 		}
 		
+		if (!this.emptyCells) return this.OK;
 		let state;
 		for (let i in this.strategies) {
 			state = this[this.strategies[i]]();
@@ -504,9 +531,8 @@ class SudokuSolver {
 	
 	solve() {
 		let state;
-		do {
-			state = this.step();
-		} while(this.emptyCells && state == this.OK);
+		do state = this.step();
+		while (this.emptyCells && state == this.OK);
 	}
 	
 	findAllSolutions(max = 10) {
@@ -540,6 +566,7 @@ function readGrid() {
 function setGrid(grid, readonly) {
 	Array.from(document.querySelectorAll(".grid .cell input")).forEach((cell, i) => cell.value = grid[i] || "");
 	if (readonly) Array.from(document.querySelectorAll(".grid .cell input")).forEach((cell, i) => grid[i] ? cell.setAttribute("disabled","") : cell.removeAttribute("disabled"));
+	solveDuration.value = "";
 }
 function showCandidates(cells) {
 	Array.from(document.querySelectorAll(".grid .cell")).forEach((div, cell) => {
@@ -549,23 +576,24 @@ function showCandidates(cells) {
 	});
 }
 function gridToStr(array) {
-	return array.map(n=>Number(n)||0).join("");
+	return array.map(n=>parseInt(n)||0).join("");
 }
 function strToGrid(str) {
-	return str.split("").map(n=>Number(n));
+	return str.split("").map(n=>parseInt(n));
 }
 
-setGrid(strToGrid(GRIDS[1]), true);
-document.querySelector("#solve").onclick = function() {
+setGrid(strToGrid(document.querySelector("select").value), true);
+solveButton.onclick = function() {
 	window.solver = new SudokuSolver(readGrid());
-	let time = performance.now();
+	let start = performance.now();
 	solver.solve();
-	console.log("Solve time:", (performance.now()-time)+"ms");
+	let duration = performance.now() - start;
 	setGrid(solver.grid);
 	showCandidates(solver.candidates.cells);
-	document.querySelector("#stepback").removeAttribute("disabled");
+	backButton.removeAttribute("disabled");
+	solveDuration.value = "Solve duration: "+duration+"ms";
 };
-document.querySelector("#step").onclick = function() {
+stepButton.onclick = function() {
 	window.solver ||= new SudokuSolver(readGrid());
 	/*solver.logs = null;
 	benchmark({
@@ -577,15 +605,15 @@ document.querySelector("#step").onclick = function() {
 	}, 1000, 10);*/
 	setGrid(solver.grid);
 	showCandidates(solver.candidates.cells);
-	if (solver.step() == solver.ERROR) document.querySelector("#step").setAttribute("disabled", "");
-	document.querySelector("#stepback").removeAttribute("disabled");
+	if (solver.step() == solver.ERROR) stepButton.setAttribute("disabled", "");
+	backButton.removeAttribute("disabled");
 };
-document.querySelector("#stepback").onclick = function() {
+backButton.onclick = function() {
 	if (window.solver && solver.states && solver.states.length) {
 		solver.setCurrentState(solver.states.pop());
 		setGrid(solver.grid);
 		showCandidates(solver.candidates.cells);
-		if (!solver.states.length) document.querySelector("#stepback").setAttribute("disabled", "");
+		if (!solver.states.length) backButton.setAttribute("disabled", "");
 	}
 };
 

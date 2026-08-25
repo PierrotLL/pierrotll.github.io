@@ -1,4 +1,4 @@
-const cacheName = "2026-08-24";
+const cacheName = "piano-2026-08-24";
 const contentToCache = [
 	"piano.html",
 	"piano.webmanifest",

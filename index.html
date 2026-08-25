@@ -1,59 +1,193 @@
 <!DOCTYPE html>
 <title>&#128241; Games by PierrotLL</title>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,minimum-scale=1.0,maximum-scale=3.0" />
 
 <style>
 body {
-	margin: 10px auto;
-	width: calc(100vmin - 20px);
+	margin: 0;
 	font-family: sans-serif;
 	color: white;
+	background: light-dark(#fff, #222);
 }
 main {
-	border-radius: 10vmin;
-	background: black;
-	min-height: calc(100vh - 20px);
+	height: 100dvh;
+	background:
+		linear-gradient(160deg, #00000000 55%, #000020F0 75%), /* shadow */
+		radial-gradient(farthest-side circle at 50% 160%, #00872590 50%, #00872550 65%, #FFD30040 68%, #00000000 70%), /* planet colors */
+		radial-gradient(farthest-side circle at 50% 160%, #004, #004 69%, #00000000 70%), /* planet mask */
+		repeating-radial-gradient(circle at -30% -20%, #004 0%, #004 1.5%, #00000000 1.9%, #00000000 2.1%, #004 2.5%), /* stars mask */
+		repeating-radial-gradient(circle at  98%  67%, #004 0%, #004 1.5%, #00000000 1.9%, #00000000 2.1%, #004 2.5%),
+		repeating-linear-gradient( 0deg, #004 0%, #004 3.7%, #00000000 4%, #004 4.3%), /* stars grid */
+		repeating-linear-gradient(90deg, #004 0%, #004 2.7%, #FFFFFFFF 3%, #004 3.3%);
 	font-size: 0;
-	contain: content;
+	overflow: hidden; /* prevent scrollbar overflowing border-radius */
+	user-select: none;
+	
+	@media (pointer: fine) { /* if PC, page looks like a phone */
+		aspect-ratio: 9 / 16;
+		height: calc(100svh - 32px);
+		margin: 15px auto;
+		border: solid 1px gray;
+		border-radius: 10vmin;
+		outline: solid 5px black;
+		box-shadow: -4px -4px 2px 1px white, 0 0 3px 12px light-dark(#444, #666);
+	}
+}
+@media (prefers-color-scheme: dark) {
+	body { background: #222 }
+	main { box-shadow: -4px -4px 2px 1px white, 0 0 3px 12px #666 }
+}
+nav {
+	box-sizing: border-box;
+	height: 100%;
+	padding: calc(100% / 22); /* app icon width = 3/22e, space between and around = 2/22e. (4apps*3+5spaces*2=22) */
+	overflow: auto;
+	scrollbar-width: none;
 }
 h1 {
-	font-size: 8vmin;
+	font-size: 48px;
 	font-weight: bold;
 	text-align: center;
 }
-.app {
+app {
 	display: inline-block;
-	text-decoration: none;
-	color: white;
-	margin: 2.5%;
-	width: 20%;
+	box-sizing: border-box;
+	margin: 5%;  /* 1/20e */
+	width:  15%; /* 3/20e */
 	vertical-align: top;
+	cursor: pointer;
+	transition: scale .1s;
 }
-img {
-	max-width: 80%;
-	margin: 10%;
+app:active:not(.open) {
+	scale: .9;
+}
+app > :first-child {
+	width: 100%;
 	aspect-ratio: 1;
 	border-radius: 25%;
+}
+img {
 	background: lightgray;
 }
-h2 {
-	margin: 0;
-	font-size: 18px;
-	font-weight: normal;
+name {
+	display: block;
+	position: relative;
+	width: 150%;
+	left: -25%;
+	margin-top: .5em;
+	height: 1.2em;
+	font-size: 14px;
 	text-align: center;
+}
+
+folder {
+	display: block;
+	box-sizing: border-box;
+	padding: 8%;
+	background: #222;
+	pointer-events: none;
+	transition: padding .5s;
+}
+folder app {
+	margin: calc(100% / 36);
+	width: calc(100% / 36 * 10);
+}
+folder app:nth-child(n+10) {
+	display: none;
+}
+folder name {
+	display: none;
+}
+
+nav:has(.open) {
+	overflow: unset;
+}
+nav:has(.open) > :not(.open) {
+	display: none;
+}
+app.open {
+	margin: 12.5%;
+	padding: 70px 0 25%;
+	width: 75%;
+	height: 100%;
+	position: relative;
+	cursor: auto;
+}
+.open folder {
+	background: none;
+	border-radius: unset;
+	aspect-ratio: unset;
+	pointer-events: unset;
+	overflow: auto;
+	scrollbar-width: none;
+	height: 100%;
+	padding: 0;
+	border-top: solid 1px #80808080;
+	border-bottom: solid 1px #80808080;
+}
+.open > name {
+	position: absolute;
+	top: 0;
+	left: 0;
+	font-size: 32px;
+	text-align: left;
+}
+.open app {
+	display: inline-block !important;
+	margin: calc(100% / 15);
+	width:  calc(100% / 15 * 3);
+}
+.open app name {
+	display: block;
 }
 </style>
 <main>
-	<h1>My Apps</h1>
-	<a class=app href="./solitaire/solitaire.html">
-		<img src="./solitaire/icon-512-bg.png"/>
-		<h2>Peg-Solitaire</h2>
-	</a>
-	<a class=app href="./rubikscube/rubikscube.html">
-		<img src="./rubikscube/icon-512.png"/>
-		<h2>Rubik's Cube</h2>
-	</a>
-	<a class=app href="./piano/piano.html">
-		<img src="./piano/icon-512.png"/>
-		<h2>Piano Trainer</h2>
-	</a>
+	<nav>
+		<h1>My Apps</h1>
+		<app href="./solitaire/solitaire.html">
+			<img src="./solitaire/icon-512-bg.png"/>
+			<name>Peg-Solitaire</name>
+		</app>
+		<app href="./rubikscube/rubikscube.html">
+			<img src="./rubikscube/icon-512-bg.png"/>
+			<name>Rubik's Cube</name>
+		</app>
+		<app href="./piano/piano.html">
+			<img src="./piano/icon-512.png"/>
+			<name>Piano Trainer</name>
+		</app>
+		<app>
+			<folder>
+				<app href="./experiments/SudokuSolver.html">
+					<img src="./experiments/sudoku.png"/>
+					<name>Sudoku Solver</name>
+				</app>
+				<app href="./experiments/collisions.html">
+					<img src="./experiments/collisions.png"/>
+					<name>Collisions</name>
+				</app>
+				<app href="./experiments/shifumi.html">
+					<img src="./experiments/shifumi.png"/>
+					<name>Shifumi</name>
+				</app>
+				<app href="./experiments/raycasting.html">
+					<img src="./experiments/raycasting.png"/>
+					<name>Raycasting</name>
+				</app>
+				<app href="./experiments/cube.html">
+					<img src="./experiments/cube.png"/>
+					<name>Cube</name>
+				</app>
+			</folder>
+			<name>Experiments</name>
+		</app>
+	</nav>
 </main>
+<script>
+	document.querySelector("main").onclick = e=>{
+		let app = e.target.closest("app"), url = app && app.getAttribute("href");
+		if (url) window.location = url;
+		else if (app) app.classList.toggle("open");
+		else document.querySelector(".open").classList.remove("open");
+	}
+</script>
