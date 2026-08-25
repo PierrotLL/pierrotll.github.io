@@ -20,8 +20,8 @@ main {
 		repeating-linear-gradient( 0deg, #004 0%, #004 3.7%, #00000000 4%, #004 4.3%), /* stars grid */
 		repeating-linear-gradient(90deg, #004 0%, #004 2.7%, #FFFFFFFF 3%, #004 3.3%);
 	font-size: 0;
-	overflow: hidden; /* prevent scrollbar overflowing border-radius */
 	user-select: none;
+	overflow: hidden; /* prevent scrollbar overflowing border-radius */
 	
 	@media (pointer: fine) { /* if PC, page looks like a phone */
 		aspect-ratio: 9 / 16;
@@ -40,7 +40,7 @@ main {
 nav {
 	box-sizing: border-box;
 	height: 100%;
-	padding: calc(100% / 22); /* app icon width = 3/22e, space between and around = 2/22e. (4apps*3+5spaces*2=22) */
+	padding: calc(100% / 120 * 4);
 	overflow: auto;
 	scrollbar-width: none;
 }
@@ -52,8 +52,8 @@ h1 {
 app {
 	display: inline-block;
 	box-sizing: border-box;
-	margin: 5%;  /* 1/20e */
-	width:  15%; /* 3/20e */
+	margin: calc(100% / 104 * 5);
+	width:  calc(100% / 104 * 16);
 	vertical-align: top;
 	cursor: pointer;
 	transition: scale .1s;
@@ -74,7 +74,7 @@ name {
 	position: relative;
 	width: 150%;
 	left: -25%;
-	margin-top: .5em;
+	margin-top: .6em;
 	height: 1.2em;
 	font-size: 14px;
 	text-align: center;
@@ -89,8 +89,8 @@ folder {
 	transition: padding .5s;
 }
 folder app {
-	margin: calc(100% / 36);
-	width: calc(100% / 36 * 10);
+	margin: calc(100% / 78 * 5);
+	width:  calc(100% / 78 * 16);
 }
 folder app:nth-child(n+10) {
 	display: none;
@@ -106,8 +106,8 @@ nav:has(.open) > :not(.open) {
 	display: none;
 }
 app.open {
-	margin: 12.5%;
-	padding: 70px 0 25%;
+	margin: calc(100% / 104 * 13);
+	padding: 70px 0 calc(100% / 104 * 26);
 	width: 75%;
 	height: 100%;
 	position: relative;
