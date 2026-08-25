@@ -11,7 +11,7 @@ onload = _=> {
 	
 	addEventListener("beforeinstallprompt", e=> {
 		document.body.append(installButton);
-		requestFrameAnimation(_=> installButton.style.opacity = 1);
+		requestAnimationFrame(_=> installButton.style.opacity = 1);
 		installButton.onclick = _=> {
 			e.prompt().then(value => {
 				if (value == "accepted") installButton.remove();
