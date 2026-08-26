@@ -198,10 +198,10 @@ app.open {
 		} catch (e) {
 			if (document.querySelector(".open")) {
 				document.getElementsByTagName("nav")[0].style.overflow = "unset";
-				document.querySelectorAll("nav app").forEach(app => app.classList.contains("open") ? null : app.style.display = "none");
+				document.querySelectorAll("nav > *").forEach(e => e.classList.contains("open") ? null : e.style.display = "none");
 			} else {
 				document.getElementsByTagName("nav")[0].style.overflow = "";
-				document.querySelectorAll("nav app").forEach(app => app.style.display = "");
+				document.querySelectorAll("nav > *").forEach(e => e.style.display = "");
 			}
 		}
 	}
