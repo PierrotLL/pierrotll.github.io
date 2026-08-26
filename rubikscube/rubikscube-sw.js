@@ -1,8 +1,9 @@
-const cacheName = "rubikscube-2026-08-24";
+const cacheName = "rubikscube-2026-08-26";
 const contentToCache = [
 	"rubikscube.html",
 	"rubikscube.webmanifest",
-	"icon-512-bg.png",
+	"icon-64.png",
+	"icon-192.png",
 	"icon-512.png",
 ];
 

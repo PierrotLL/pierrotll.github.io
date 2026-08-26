@@ -1,11 +1,12 @@
-const cacheName = "solitaire-2026-08-24";
+const cacheName = "solitaire-2026-08-26";
 const contentToCache = [
   "solitaire.html",
   "solitaire.css",
   "solitaire.js",
   "boards.js",
+  "icon-64.webp",
+  "icon-192-bg.webp",
   "icon-512-bg.png",
-  "icon-64.png",
 ];
 
 self.addEventListener("install", e => {

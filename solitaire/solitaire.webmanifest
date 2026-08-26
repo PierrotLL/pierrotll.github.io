@@ -5,6 +5,10 @@
 	"display": "standalone",
 	"start_url": "./solitaire.html",
 	"icons": [{
+		"src": "icon-192-bg.webp",
+		"type": "image/webp",
+		"sizes": "192x192"
+	}, {
 		"src": "icon-512-bg.png",
 		"type": "image/png",
 		"sizes": "512x512"
