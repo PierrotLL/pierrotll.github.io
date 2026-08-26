@@ -6,7 +6,7 @@
 	installButton.style = "position:absolute; top:0; right:0; font-size: 16px; padding:8px 16px; margin:1em; opacity:0; transition:1s; ";
 	installButton.onclick = (_=>{
 		installPromptEvent && installPromptEvent.prompt().then(value => {
-			if (value == "accepted") installButton.remove();
+			if (value.outcome == "accepted") installButton.remove();
 		});
 	});
 	addEventListener("beforeinstallprompt", e=> {
