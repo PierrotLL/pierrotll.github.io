@@ -18,7 +18,7 @@ self.addEventListener("activate", e => {
 	e.waitUntil(
 		caches.keys()
 		.then(keys => Promise.all(
-			keys.reduce(key => key.substring(0, key.indexOf("-") == appName && key != cacheName))
+			keys.reduce(key => key.substring(0, key.indexOf("-")) == appName && key != cacheName)
 				.map(caches.delete);
 		))
 	);
