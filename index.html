@@ -8,6 +8,7 @@ body {
 	font-family: sans-serif;
 	color: white;
 	background: light-dark(#fff, #222);
+	background: #fff;
 }
 main {
 	height: 100dvh;
@@ -22,8 +23,9 @@ main {
 	font-size: 0;
 	user-select: none;
 	overflow: hidden; /* prevent scrollbar overflowing border-radius */
-	
-	@media (pointer: fine) { /* if PC, page looks like a phone */
+}
+@media (pointer: fine) { /* if PC, page looks like a phone */
+	main {
 		aspect-ratio: 9 / 16;
 		height: calc(100svh - 32px);
 		margin: 15px auto;
@@ -31,6 +33,7 @@ main {
 		border-radius: 10vmin;
 		outline: solid 5px black;
 		box-shadow: -4px -4px 2px 1px white, 0 0 3px 12px light-dark(#444, #666);
+		box-shadow: -4px -4px 2px 1px white, 0 0 3px 12px #444;
 	}
 }
 @media (prefers-color-scheme: dark) {
@@ -189,5 +192,17 @@ app.open {
 		if (url) window.location = url;
 		else if (app) app.classList.toggle("open");
 		else document.querySelector(".open").classList.remove("open");
+		
+		try {
+			document.querySelector("nav:has(.open)");
+		} catch (e) {
+			if (document.querySelector(".open")) {
+				document.getElementsByTagName("nav")[0].style.overflow = "unset";
+				document.querySelectorAll("nav app").forEach(app => app.classList.contains("open") ? null : app.style.display = "none");
+			} else {
+				document.getElementsByTagName("nav")[0].style.overflow = "";
+				document.querySelectorAll("nav app").forEach(app => app.style.display = "");
+			}
+		}
 	}
 </script>
