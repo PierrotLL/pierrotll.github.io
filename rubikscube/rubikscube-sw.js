@@ -19,7 +19,7 @@ self.addEventListener("activate", e => {
 		caches.keys()
 		.then(keys => Promise.all(
 			keys.reduce(key => key.substring(0, key.indexOf("-")) == appName && key != cacheName)
-				.map(caches.delete);
+				.map(caches.delete)
 		))
 	);
 });
