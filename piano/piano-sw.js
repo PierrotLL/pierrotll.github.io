@@ -16,9 +16,12 @@ self.addEventListener("install", e => {
 });
 
 self.addEventListener("activate", e => {
+	let appName = cacheName.substring(0, cacheName.indexOf("-"));
 	e.waitUntil(
-		caches.keys().then(keys => Promise.all(
-			keys.map(key => key != cacheName ? caches.delete(key) : null)
+		caches.keys()
+		.then(keys => Promise.all(
+			keys.reduce(key => key.substring(0, key.indexOf("-")) == appName && key != cacheName)
+				.map(caches.delete)
 		))
 	);
 });
@@ -26,14 +29,6 @@ self.addEventListener("activate", e => {
 self.addEventListener("fetch", e => {
 	e.respondWith(
 		caches.match(e.request)
-		.then(cacheResponse =>
-			cacheResponse ||
-			fetch(e.request)
-			.then(fetchResponse => {
-				let clone = fetchResponse.clone();
-				caches.open(cacheName).then(cache => cache.put(e.request, clone));
-				return fetchResponse;
-			})
-		)
+		.then(cacheResponse => cacheResponse || fetch(e.request))
 	);
 });
