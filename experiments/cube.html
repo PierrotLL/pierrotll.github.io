@@ -1,0 +1,169 @@
+<style>
+html {
+	margin: 0;
+	height: 100%;
+}
+body {
+	margin: 0;
+	height: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	perspective: 1000px;
+	background: #222;
+}
+
+#cube {
+	width: 300px;
+	height: 300px;
+	user-select: none;
+	transform-style: preserve-3d;
+}
+
+.face {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+	height: 100%;
+	position: absolute;
+	font-size: 180px;
+	opacity: 0.9;
+}
+#top {
+	background: yellow;
+	transform: rotateX(90deg) translateZ(150px);
+}
+#bottom {
+	background: white;
+	transform: rotateX(-90deg) translateZ(150px);
+}
+#front {
+	background: green;
+	transform: translateZ(150px);
+}
+#back {
+	background: blue;
+	transform: rotateY(180deg) translateZ(150px);
+}
+#left {
+	background: orange;
+	transform: rotateY(-90deg) translateZ(150px);
+}
+#right {
+	background: red;
+	transform: rotateY(90deg) translateZ(150px);
+}
+</style>
+
+<body>
+	<div id=cube>
+		<div id=top class=face>1</div>
+		<div id=bottom class=face>6</div>
+		<div id=front class=face>3</div>
+		<div id=back class=face>4</div>
+		<div id=left class=face>5</div>
+		<div id=right class=face>2</div>
+	</div>
+</body>
+
+<script>
+let x, y, dx, dy, grabbing, animation;
+let matrix3d = [
+	1,0,0,0,
+	0,1,0,0,
+	0,0,1,0,
+	0,0,0,1];
+rotateCube(1,1,1);
+
+cube.addEventListener("mousemove", e=>{ if (!grabbing) cursor("grab"); });
+cube.addEventListener("mouseout", e=>{ if (!grabbing) cursor("auto"); });
+cube.addEventListener("mousedown", touchstart);
+cube.addEventListener("touchstart", touchstart);
+window.addEventListener("mousemove", touchmove);
+window.addEventListener("touchmove", touchmove, { passive: false });
+window.addEventListener("mouseup", touchend);
+window.addEventListener("touchend", touchend);
+
+function touchstart(e) {
+	cursor("grabbing");
+	grabbing = true;
+	x = e.x || e.touches[0].clientX;
+	y = e.y || e.touches[0].clientY;
+	cancelAnimationFrame(animation);
+}
+function touchmove(e) {
+	if (grabbing) {
+		e.preventDefault(); // prevent refresh on mobile
+		e.x ||= e.touches[0].clientX;
+		e.y ||= e.touches[0].clientY;
+		dx = e.x - x;
+		dy = e.y - y;
+		x = e.x;
+		y = e.y;
+		rotateCube(dy/200, -dx/200, 0);
+	}
+}
+function touchend(e) {
+	cursor("auto");
+	grabbing = false;
+	animation = requestAnimationFrame(frame);
+}
+
+function cursor(type) {
+	document.body.style.cursor = type;
+}
+function frame() {
+	dx *= .95;
+	dy *= .95;
+	rotateCube(dy/200, -dx/200, 0);
+	if (Math.abs(dx)>.01 || Math.abs(dy)>.01) animation = requestAnimationFrame(frame);
+}
+function rotateCube(x, y, z) {
+	if (x) matrix3d = multiplyMatrix(matrix3d, rotationXMatrix(x));
+	if (y) matrix3d = multiplyMatrix(matrix3d, rotationYMatrix(y));
+	if (z) matrix3d = multiplyMatrix(matrix3d, rotationZMatrix(z));
+	cube.style.transform = "matrix3d("+printMatrix(matrix3d)+")";
+}
+
+function multiplyMatrix(a, b, s=4) {
+	let m = [];
+	for (let i=0 ; i<s*s ; i++) {
+		m[i] = 0;
+		let x = i%s, y = Math.floor(i/s);
+		for (let j=0 ; j<s ; j++) {
+			m[i] += a[y*s+j] * b[j*s+x];
+		}
+	}
+	return m;
+}
+function rotationXMatrix(a) {
+	let cos = Math.cos(a), sin = Math.sin(a);
+	return [
+		1,0,0,0,
+		0,cos,-sin,0,
+		0,sin,cos,0,
+		0,0,0,1]
+}
+function rotationYMatrix(a) {
+	let cos = Math.cos(a), sin = Math.sin(a);
+	return [
+		cos,0,sin,0,
+		0,1,0,0,
+		-sin,0,cos,0,
+		0,0,0,1]
+}
+function rotationZMatrix(a) {
+	let cos = Math.cos(a), sin = Math.sin(a);
+	return [
+		cos,-sin,0,0,
+		sin,cos,0,0,
+		0,0,1,0,
+		0,0,0,1]
+}
+function printMatrix(m) {
+	let s = "";
+	for (let i=0, l=m.length ; i<l ; i++) s += (i?",":"")+m[i].toFixed(10);
+	return s;
+}
+</script>
