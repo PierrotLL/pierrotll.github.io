@@ -11,8 +11,6 @@
 		requestAnimationFrame(_=> installButton.style.opacity = 1);
 	});
 	installButton.onclick = (_=>{
-		installPromptEvent.prompt().then(value => {
-			if (value.outcome == "accepted") installButton.remove();
-		});
+		installPromptEvent.prompt().finally(installButton.remove);
 	});
 })();
