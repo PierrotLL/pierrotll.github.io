@@ -1,0 +1,49 @@
+<style>
+body {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	height: 100svh;
+	/*perspective: 1500px;*/
+}
+.container {
+	position: relative;
+	width: 80vmin;
+	aspect-ratio: 1;
+	transform: rotateY(var(--ry)) rotateX(var(--rx));
+	transform-style: preserve-3d;
+}
+.circle {
+	position: absolute;
+	width: 99%;
+	aspect-ratio: 1;
+	border-radius: 50%;
+	border: solid 1px #000;
+}
+.x { transform: rotateY(90deg) }
+.y { transform: rotateX(90deg) }
+.sphere {
+	position: absolute;
+	width: 100%;
+	aspect-ratio: 1;
+	border-radius: 50%;
+	background: radial-gradient(circle at 33% 33%, #aaf, #000);
+	transform: rotateX(calc(var(--rx) * -1)) rotateY(calc(var(--ry) * -1));
+}
+</style>
+<div class=container id=ball>
+	<div class=sphere></div>
+	<div class="circle x"></div>
+	<div class="circle y"></div>
+	<div class="circle z"></div>
+</div>
+<script>
+let ry=0, rx=23;
+function frame() {
+	//rx = (rx+.5)%360;
+	ry = (ry+1)%360;
+	ball.style="--rx:"+rx+"deg;--ry:"+ry+"deg;";
+	requestAnimationFrame(frame);
+}
+frame();
+</script>

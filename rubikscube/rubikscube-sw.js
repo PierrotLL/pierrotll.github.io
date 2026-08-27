@@ -8,14 +8,12 @@ const contentToCache = [
 ];
 
 self.addEventListener("install", e => {
-	console.log("sw install", cacheName);
 	e.waitUntil(
 		caches.open(cacheName).then(cache => cache.addAll(contentToCache))
 	);
 });
 
 self.addEventListener("activate", e => {
-	console.log("sw activate", cacheName);
 	const appName = cacheName.replace(/-.*/,"");
 	e.waitUntil(
 		caches.keys()
@@ -27,10 +25,8 @@ self.addEventListener("activate", e => {
 });
 
 self.addEventListener("fetch", e => {
-	console.log("sw fetch", cacheName, e.request);
 	e.respondWith(
 		caches.match(e.request)
 		.then(cacheResponse => cacheResponse || fetch(e.request))
-		.then(r=>(console.log(e.request, r),r), r=>(console.log(e.request, r),r))
 	);
 });
