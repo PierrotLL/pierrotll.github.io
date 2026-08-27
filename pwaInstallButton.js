@@ -13,7 +13,6 @@
 	installButton.onclick = (_=>{
 		installPromptEvent.prompt().then(value => {
 			if (value.outcome == "accepted") installButton.remove();
-			else installPromptEvent.userChoice = undefined;
 		});
 	});
 })();

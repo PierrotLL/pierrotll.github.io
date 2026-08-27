@@ -8,32 +8,32 @@ body {
 	font-family: sans-serif;
 	color: white;
 	background: light-dark(#fff, #222);
-	background: #fff;
+	font-size: 1svh;
 }
 main {
-	height: 100dvh;
+	height: 100em;
 	background:
 		linear-gradient(160deg, #00000000 55%, #000020F0 75%), /* shadow */
 		radial-gradient(farthest-side circle at 50% 160%, #00872590 50%, #00872550 65%, #FFD30040 68%, #00000000 70%), /* planet colors */
 		radial-gradient(farthest-side circle at 50% 160%, #004, #004 69%, #00000000 70%), /* planet mask */
-		repeating-radial-gradient(circle at -30% -20%, #004 0%, #004 1.5%, #00000000 1.9%, #00000000 2.1%, #004 2.5%), /* stars mask */
-		repeating-radial-gradient(circle at  98%  67%, #004 0%, #004 1.5%, #00000000 1.9%, #00000000 2.1%, #004 2.5%),
-		repeating-linear-gradient( 0deg, #004 0%, #004 3.7%, #00000000 4%, #004 4.3%), /* stars grid */
-		repeating-linear-gradient(90deg, #004 0%, #004 2.7%, #FFFFFFFF 3%, #004 3.3%);
-	font-size: 0;
+		repeating-radial-gradient(at  0% -20%, #004 0%, #004 1.5%, #00000000 1.9%, #00000000 2.1%, #004 2.5%), /* stars mask */
+		repeating-radial-gradient(at 98%  67%, #004 0%, #004 1.5%, #00000000 1.9%, #00000000 2.1%, #004 2.5%),
+		repeating-linear-gradient( 45deg, #004 0%, #004 3.7%, #00000000 4%, #004 4.3%), /* stars grid */
+		repeating-linear-gradient(-45deg, #004 0%, #004 2.7%, #FFFFFFFF 3%, #004 3.3%);
 	user-select: none;
 	overflow: hidden; /* prevent scrollbar overflowing border-radius */
 }
-@media (pointer: fine) { /* if PC, page looks like a phone */
+@media (any-pointer: fine) and (hover: hover) { /* if PC, page looks like a phone */
 	main {
 		aspect-ratio: 9 / 16;
-		height: calc(100svh - 32px);
+		font-size: 9px;
+		height: calc(100em - 32px);
 		margin: 15px auto;
 		border: solid 1px gray;
-		border-radius: 10vmin;
+		border-radius: 10em;
 		outline: solid 5px black;
-		box-shadow: -4px -4px 2px 1px white, 0 0 3px 12px light-dark(#444, #666);
 		box-shadow: -4px -4px 2px 1px white, 0 0 3px 12px #444;
+		box-shadow: -4px -4px 2px 1px white, 0 0 3px 12px light-dark(#444, #666);
 	}
 }
 @media (prefers-color-scheme: dark) {
@@ -43,9 +43,10 @@ main {
 nav {
 	box-sizing: border-box;
 	height: 100%;
-	padding: calc(100% / 110 * 3); /* Screen width divided into 110ths. App icon = 16*120ths, app margin=5*110ths */
+	padding: calc(100% / 110 * 3); /* Screen width divided into 110ths. App icon = 16*110ths, space between=10*110ths, space around=8*110ths */
 	overflow: auto;
 	scrollbar-width: none;
+	font-size: 0;
 }
 h1 {
 	font-size: 48px;
@@ -128,6 +129,10 @@ app.open {
 	border-top: solid 1px #80808080;
 	border-bottom: solid 1px #80808080;
 }
+@media (min-aspect-ratio: 1.35) and (hover: none) {
+	.open folder { height:unset; overflow: unset; }
+	nav:has(.open) { overflow: auto; }
+}
 .open > name {
 	position: absolute;
 	top: 0;
@@ -187,22 +192,22 @@ app.open {
 	</nav>
 </main>
 <script>
-	document.querySelector("main").onclick = e=>{
-		let app = e.target.closest("app"), url = app && app.getAttribute("href");
-		if (url) window.location = url;
-		else if (app) app.classList.toggle("open");
-		else document.querySelector(".open").classList.remove("open");
-		
-		try {
-			document.querySelector("nav:has(.open)");
-		} catch (e) {
-			if (document.querySelector(".open")) {
-				document.getElementsByTagName("nav")[0].style.overflow = "unset";
-				document.querySelectorAll("nav > *").forEach(e => e.classList.contains("open") ? null : e.style.display = "none");
-			} else {
-				document.getElementsByTagName("nav")[0].style.overflow = "";
-				document.querySelectorAll("nav > *").forEach(e => e.style.display = "");
-			}
+onclick = e=>{
+	let app = e.target.closest("app"), url = app && app.getAttribute("href"), open = document.querySelector(".open");
+	if (url) window.location = url;
+	else if (app) app.classList.toggle("open");
+	else if (open) open.classList.remove("open");
+	
+	try {
+		document.querySelector("nav:has(.open)");
+	} catch (e) { // fix in case browser do not support :has selector
+		if (document.querySelector(".open")) {
+			document.getElementsByTagName("nav")[0].style.overflow = "unset";
+			document.querySelectorAll("nav > *").forEach(e => e.classList.contains("open") ? null : e.style.display = "none");
+		} else {
+			document.getElementsByTagName("nav")[0].style.overflow = "";
+			document.querySelectorAll("nav > *").forEach(e => e.style.display = "");
 		}
 	}
+}
 </script>

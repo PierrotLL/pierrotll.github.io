@@ -1,4 +1,4 @@
-const cacheName = "rubikscube-2026-08-26-v3";
+const cacheName = "rubikscube-2026-08-27";
 const contentToCache = [
 	"rubikscube.html",
 	"rubikscube.webmanifest",
@@ -14,11 +14,11 @@ self.addEventListener("install", e => {
 });
 
 self.addEventListener("activate", e => {
-	let appName = cacheName.substring(0, cacheName.indexOf("-"));
+	const appName = cacheName.replace(/-.*/,"");
 	e.waitUntil(
 		caches.keys()
 		.then(keys => Promise.all(
-			keys.reduce(key => key.substring(0, key.indexOf("-")) == appName && key != cacheName)
+			keys.filter(key => key.replace(/-.*/,"") == appName && key != cacheName)
 				.map(caches.delete)
 		))
 	);
