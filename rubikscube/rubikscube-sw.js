@@ -31,6 +31,6 @@ self.addEventListener("fetch", e => {
 	e.respondWith(
 		caches.match(e.request)
 		.then(cacheResponse => cacheResponse || fetch(e.request))
-		.finally(r=>(console.log(e.request, r),r))
+		.then(r=>(console.log(e.request, r),r), r=>(console.log(e.request, r),r))
 	);
 });
