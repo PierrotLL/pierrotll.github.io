@@ -5,13 +5,12 @@
 <style>
 body {
 	margin: 0;
-	font-family: sans-serif;
+	font: 14px sans-serif;
 	color: white;
 	background: light-dark(#fff, #222);
-	font-size: 1svh;
 }
 main {
-	height: 100em;
+	height: 100svh;
 	background:
 		linear-gradient(160deg, #00000000 55%, #000020F0 75%), /* shadow */
 		radial-gradient(farthest-side circle at 50% 160%, #00872590 50%, #00872550 65%, #FFD30040 68%, #00000000 70%), /* planet colors */
@@ -26,11 +25,10 @@ main {
 @media (any-pointer: fine) and (hover: hover) { /* if PC, page looks like a phone */
 	main {
 		aspect-ratio: 9 / 16;
-		font-size: 9px;
-		height: calc(100em - 32px);
-		margin: 15px auto;
+		height: calc(900px - 32px); /* 2x 15px shadow + 1px border */
+		margin: calc(15px + 5px) auto; /* 15pw shadow + 5px margin */
 		border: solid 1px gray;
-		border-radius: 10em;
+		border-radius: 90px;
 		outline: solid 5px black;
 		box-shadow: -4px -4px 2px 1px white, 0 0 3px 12px #444;
 		box-shadow: -4px -4px 2px 1px white, 0 0 3px 12px light-dark(#444, #666);
@@ -46,19 +44,19 @@ nav {
 	padding: calc(100% / 110 * 3); /* Screen width divided into 110ths. App icon = 16*110ths, space between=10*110ths, space around=8*110ths */
 	overflow: auto;
 	scrollbar-width: none;
-	font-size: 0;
 }
 h1 {
 	font-size: 48px;
 	font-weight: bold;
 	text-align: center;
 }
+grid {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+}
 app {
-	display: inline-block;
-	box-sizing: border-box;
-	margin: calc(100% / 104 * 5);
-	width:  calc(100% / 104 * 16);
-	vertical-align: top;
+	display: block;
+	margin: calc(100% * 5 / 26);
 	cursor: pointer;
 	transition: scale .1s;
 }
@@ -66,6 +64,7 @@ app:active:not(.open) {
 	scale: .9;
 }
 app > :first-child {
+	display: block;
 	width: 100%;
 	aspect-ratio: 1;
 	border-radius: 25%;
@@ -86,15 +85,17 @@ name {
 
 folder {
 	display: block;
-	box-sizing: border-box;
-	padding: 8%;
 	background: #222;
 	pointer-events: none;
+	box-sizing: border-box;
+	padding: 9%;
 	transition: padding .5s;
 }
+folder grid {
+	grid-template-columns: repeat(3, auto);
+}
 folder app {
-	margin: calc(100% / 36);
-	width: calc(100% / 36 * 10);
+	margin: 5%;
 }
 folder app:nth-child(n+10) {
 	display: none;
@@ -103,17 +104,23 @@ folder name {
 	display: none;
 }
 
-nav:has(.open) {
+nav.hasopen {
 	overflow: unset;
 }
-nav:has(.open) > :not(.open) {
+nav.hasopen > h1, nav.hasopen > grid > :not(.open) {
 	display: none;
 }
-app.open {
-	margin: calc(100% / 104 * 13);
-	padding: 70px 0 calc(100% / 104 * 26);
-	width: 75%;
+nav.hasopen > grid {
+	display: block;
+	box-sizing: border-box;
 	height: 100%;
+	padding: calc(100% / 104 * 13);
+}
+app.open {
+	height: 100%;
+	box-sizing: border-box;
+	margin: 0;
+	padding-top: 70px;
 	position: relative;
 	cursor: auto;
 }
@@ -131,7 +138,7 @@ app.open {
 }
 @media (min-aspect-ratio: 1.35) and (hover: none) {
 	.open folder { height:unset; overflow: unset; }
-	nav:has(.open) { overflow: auto; }
+	nav.hasopen { overflow: auto; }
 }
 .open > name {
 	position: absolute;
@@ -140,10 +147,14 @@ app.open {
 	font-size: 32px;
 	text-align: left;
 }
-.open app {
-	display: inline-block !important;
-	margin: calc(100% / 78 * 5);
-	width:  calc(100% / 78 * 16);
+.open folder grid {
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+app.open app {
+	margin: calc(100% * 5 / 26);
+}
+app.open app {
+	display: block;
 }
 .open app name {
 	display: block;
@@ -152,66 +163,62 @@ app.open {
 <main>
 	<nav>
 		<h1>My Apps</h1>
-		<app href="./solitaire/solitaire.html">
-			<img src="./solitaire/icon-192-bg.webp"/>
-			<name>Peg-Solitaire</name>
-		</app>
-		<app href="./rubikscube/rubikscube.html">
-			<img src="./rubikscube/icon-192.png"/>
-			<name>Rubik's Cube</name>
-		</app>
-		<app href="./piano/piano.html">
-			<img src="./piano/icon-192.webp"/>
-			<name>Piano Trainer</name>
-		</app>
-		<app>
-			<folder>
-				<app href="./experiments/SudokuSolver.html">
-					<img src="./experiments/sudoku.webp"/>
-					<name>Sudoku Solver</name>
-				</app>
-				<app href="./experiments/collisions.html">
-					<img src="./experiments/collisions.webp"/>
-					<name>Collisions</name>
-				</app>
-				<app href="./experiments/shifumi.html">
-					<img src="./experiments/shifumi.webp"/>
-					<name>Shifumi</name>
-				</app>
-				<app href="./experiments/raycasting.html">
-					<img src="./experiments/raycasting.webp"/>
-					<name>Raycasting</name>
-				</app>
-				<app href="./experiments/cube.html">
-					<img src="./experiments/cube.webp"/>
-					<name>Cube</name>
-				</app>
-				<app href="./experiments/sphere.html">
-					<img src="./experiments/sphere.webp"/>
-					<name>Sphere</name>
-				</app>
-			</folder>
-			<name>Experiments</name>
-		</app>
+		<grid>
+			<app href="./solitaire/solitaire.html">
+				<img src="./solitaire/icon-192-bg.webp"/>
+				<name>Peg-Solitaire</name>
+			</app>
+			<app href="./rubikscube/rubikscube.html">
+				<img src="./rubikscube/icon-192.png"/>
+				<name>Rubik's Cube</name>
+			</app>
+			<app href="./piano/piano.html">
+				<img src="./piano/icon-192.webp"/>
+				<name>Piano Trainer</name>
+			</app>
+			<app>
+				<folder>
+					<grid>
+						<app href="./experiments/SudokuSolver.html">
+							<img src="./experiments/sudoku.webp"/>
+							<name>Sudoku Solver</name>
+						</app>
+						<app href="./experiments/collisions.html">
+							<img src="./experiments/collisions.webp"/>
+							<name>Collisions</name>
+						</app>
+						<app href="./experiments/shifumi.html">
+							<img src="./experiments/shifumi.webp"/>
+							<name>Shifumi</name>
+						</app>
+						<app href="./experiments/raycasting.html">
+							<img src="./experiments/raycasting.webp"/>
+							<name>Raycasting</name>
+						</app>
+						<app href="./experiments/cube.html">
+							<img src="./experiments/cube.webp"/>
+							<name>Cube</name>
+						</app>
+						<app href="./experiments/planet.html">
+							<img src="./experiments/planet.webp"/>
+							<name>Planet</name>
+						</app>
+					</grid>
+				</folder>
+				<name>Experiments</name>
+			</app>
+		</grid>
 	</nav>
 </main>
 <script>
+let nav = document.querySelector("nav"), navScrollTop;
 onclick = e=>{
-	let app = e.target.closest("app"), url = app && app.getAttribute("href"), open = document.querySelector(".open");
+	let app = e.target.closest("app"), url = app && app.getAttribute("href"), open = document.querySelector(".open"), scrollTop = nav.scrollTop;
 	if (url) window.location = url;
-	else if (app) app.classList.toggle("open");
-	else if (open) open.classList.remove("open");
-	
-	try {
-		document.querySelector("nav:has(.open)");
-	} catch (e) { // fix in case browser do not support :has selector
-		if (document.querySelector(".open")) {
-			document.getElementsByTagName("nav")[0].style.overflow = "unset";
-			document.querySelectorAll("nav > *").forEach(e => e.classList.contains("open") ? null : e.style.display = "none");
-		} else {
-			document.getElementsByTagName("nav")[0].style.overflow = "";
-			document.querySelectorAll("nav > *").forEach(e => e.style.display = "");
-		}
-	}
+	else if (app) open = app.classList.toggle("open") ? app : null;
+	else if (open) open = open.classList.remove("open");
+	nav.classList.toggle("hasopen", open);
+	if (open) [navScrollTop, nav.scrollTop, open.firstElementChild.scrollTop] = [scrollTop, 0, 0]
+	else if (navScrollTop) [nav.scrollTop, navScrollTop] = [navScrollTop, undefined];
 }
 </script>

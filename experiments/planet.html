@@ -1,0 +1,117 @@
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no,interactive-widget=resizes-content" />
+<style>
+body {
+	margin: 0;
+	width: 100vw;
+	height: 100svh;
+	overflow: hidden;
+	perspective: 10000px;
+	transform-style: preserve-3d;
+}
+.sphere {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	translate: -50% -50%;
+	aspect-ratio: 1;
+	transform-style: preserve-3d;
+	--tx: 0px;
+	transform: translateZ(-500px) rotateX(var(--rx)) rotateZ(var(--rz)) rotateY(var(--ry)) translateX(calc(var(--tx) * var(--sc))) scale3d(var(--sc),var(--sc),var(--sc));
+}
+.lon, .lat {
+	position: absolute;
+	width: 100%;
+	aspect-ratio: 1;
+	border-radius: 50%;
+	border: solid 1px #000;
+	--sc: cos(var(--lat));
+	--tz: calc(50% / var(--sc) * sin(var(--lat)));
+}
+.lon { transform: rotateY(var(--lon)) }
+.lat { transform: scale3d(var(--sc),var(--sc),var(--sc)) translateY(var(--tz)) rotateX(90deg) }
+.bg {
+	position: absolute;
+	width: 100%;
+	aspect-ratio: 1;
+	border-radius: 50%;
+	background:
+		radial-gradient(circle at 33% 33%, #00000000 50%, #000000ff),
+		radial-gradient(circle at 33% 33%, var(--color), #000);
+	transform: rotateY(calc(var(--ry) * -1)) rotateZ(calc(var(--rz) * -1)) rotateX(calc(var(--rx) * -1));
+}
+#planet {
+	width:50vmin;
+}
+#moon {
+	width:20vmin;
+	--tx:50vmin;
+}
+</style>
+<div class=sphere id=planet>
+	<div class=bg style="--color:#4b97e7"></div>
+	<div class=lon style="--lon:0deg"></div>
+	<div class=lon style="--lon:30deg"></div>
+	<div class=lon style="--lon:60deg"></div>
+	<div class=lon style="--lon:90deg"></div>
+	<div class=lon style="--lon:120deg"></div>
+	<div class=lon style="--lon:150deg"></div>
+	<div class=lat style="--lat:-66deg"></div>
+	<div class=lat style="--lat:-45deg"></div>
+	<div class=lat style="--lat:-23deg"></div>
+	<div class=lat style="--lat:0deg"></div>
+	<div class=lat style="--lat:23deg"></div>
+	<div class=lat style="--lat:45deg"></div>
+	<div class=lat style="--lat:66deg"></div>
+</div>
+<div class=sphere id=moon>
+	<div class=bg style="--color:#aaa;"></div>
+	<div class=lon style="--lon:0deg"></div>
+	<div class=lon style="--lon:90deg"></div>
+	<div class=lat style="--lat:-45deg"></div>
+	<div class=lat style="--lat:0deg"></div>
+	<div class=lat style="--lat:45deg"></div>
+</div>
+<script>
+function normalizeAngle(a) {
+	return (a%360-540)%360+180;
+}
+
+let previous;
+let last=0, rx=-30, ry=0, rz=16, dy=.1, sc=1;
+function frame(now) {
+	const elapsed = now - last;
+	last = now;
+	ry = (ry + dy * elapsed) % (4*360);
+	planet.style = "--rx:"+rx+"deg;--ry:"+(ry)%360+"deg;--rz:"+rz+"deg;--sc:"+sc;
+	moon.style = "--rx:"+rx+"deg;--ry:"+(ry/4)+"deg;--rz:"+rz+"deg;--sc:"+sc;
+	requestAnimationFrame(frame);
+}
+frame(0);
+
+
+["mousedown", "touchstart"].forEach(type => window.addEventListener(type, touchstart));
+["mousemove", "touchmove"].forEach(type => window.addEventListener(type, touchmove, {passive: false}));
+["mouseup", "click", "touchend", "touchcancel"].forEach(type => window.addEventListener(type, touchend));
+
+function touchstart(e) {
+	previous = e.touches || (e.buttons==1 ? [{clientX:e.x, clientY:e.y}] : null);
+}
+function touchmove(e) {
+	if (previous) {
+		let touches = e.touches || [{clientX:e.x, clientY:e.y}];
+		if (touches.length == 1) {
+			if (e.touches) e.preventDefault(); // prevent refresh on mobile
+			let factor = 360 / Math.min(window.innerWidth, window.innerHeight) * .3;
+			rx = normalizeAngle(rx - (touches[0].clientY - previous[0].clientY) * factor);
+			rz = normalizeAngle(rz + (touches[0].clientX - previous[0].clientX) * factor);
+		} else {
+			sc *= (Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY) / Math.hypot(previous[0].clientX - previous[1].clientX, previous[0].clientY - previous[1].clientY) - 1) * .5 + 1;
+		}
+		previous = touches;
+	}
+}
+function touchend(e) {
+	previous = null;
+}
+window.addEventListener("wheel", e => sc -= e.deltaY * .001);
+</script>

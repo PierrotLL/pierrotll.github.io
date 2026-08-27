@@ -1,6 +1,5 @@
 <style>
 html {
-	margin: 0;
 	height: 100%;
 }
 body {
@@ -30,27 +29,27 @@ body {
 	font-size: 180px;
 	opacity: 0.9;
 }
-#top {
+.top {
 	background: yellow;
 	transform: rotateX(90deg) translateZ(150px);
 }
-#bottom {
+.bottom {
 	background: white;
 	transform: rotateX(-90deg) translateZ(150px);
 }
-#front {
+.front {
 	background: green;
 	transform: translateZ(150px);
 }
-#back {
+.back {
 	background: blue;
 	transform: rotateY(180deg) translateZ(150px);
 }
-#left {
+.left {
 	background: orange;
 	transform: rotateY(-90deg) translateZ(150px);
 }
-#right {
+.right {
 	background: red;
 	transform: rotateY(90deg) translateZ(150px);
 }
@@ -58,12 +57,12 @@ body {
 
 <body>
 	<div id=cube>
-		<div id=top class=face>1</div>
-		<div id=bottom class=face>6</div>
-		<div id=front class=face>3</div>
-		<div id=back class=face>4</div>
-		<div id=left class=face>5</div>
-		<div id=right class=face>2</div>
+		<div class="face top">1</div>
+		<div class="face bottom">6</div>
+		<div class="face front">3</div>
+		<div class="face back">4</div>
+		<div class="face left">5</div>
+		<div class="face right">2</div>
 	</div>
 </body>
 
