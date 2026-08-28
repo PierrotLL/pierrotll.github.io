@@ -216,12 +216,22 @@ app.open app {
 <script>
 let nav = document.querySelector("nav"), navScrollTop;
 onclick = e=>{
-	let app = e.target.closest("app"), url = app && app.getAttribute("href"), open = document.querySelector(".open"), scrollTop = nav.scrollTop;
-	if (url) window.location = url;
-	else if (app) open = app.classList.toggle("open") ? app : null;
-	else if (open) open = open.classList.remove("open");
-	nav.classList.toggle("hasopen", open);
-	if (open) [navScrollTop, nav.scrollTop, open.firstElementChild.scrollTop] = [scrollTop, 0, 0]
-	else if (navScrollTop) [nav.scrollTop, navScrollTop] = [navScrollTop, undefined];
+	let app = e.target.closest("app:not(.open)"), url = app && app.getAttribute("href"), open = document.querySelector(".open");
+	if (url) location = url;
+	else if (app) {
+		navScrollTop = nav.scrollTop;
+		app.classList.add("open");
+		nav.classList.add("hasopen");
+		[nav.scrollTop, app.firstElementChild.scrollTop] = [0, 0];
+		location.hash = app.querySelector("folder + name").innerText;
+	} else if (open) history.back();
+}
+onhashchange = _=> {
+	if (!location.hash) {
+		let open = document.querySelector(".open");
+		if (open) open.classList.remove("open");
+		nav.classList.remove("hasopen");
+		[nav.scrollTop, navScrollTop] = [navScrollTop, undefined];
+	}
 }
 </script>
