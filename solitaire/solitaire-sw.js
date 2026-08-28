@@ -1,4 +1,4 @@
-const cacheName = "solitaire-2026-08-27";
+const cacheName = "solitaire-2026-08-28";
 const contentToCache = [
   "solitaire.html",
   "solitaire.css",

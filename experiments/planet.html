@@ -6,6 +6,9 @@ body {
 	height: 100svh;
 	overflow: hidden;
 	perspective: 10000px;
+}
+.scene {
+	height: 100%;
 	transform-style: preserve-3d;
 }
 .sphere {
@@ -47,6 +50,7 @@ body {
 	--tx:50vmin;
 }
 </style>
+<div class=scene>
 <div class=sphere id=planet>
 	<div class=bg style="--color:#4b97e7"></div>
 	<div class=lon style="--lon:0deg"></div>
@@ -70,6 +74,7 @@ body {
 	<div class=lat style="--lat:-45deg"></div>
 	<div class=lat style="--lat:0deg"></div>
 	<div class=lat style="--lat:45deg"></div>
+</div>
 </div>
 <script>
 function normalizeAngle(a) {

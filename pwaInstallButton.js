@@ -1,9 +1,9 @@
 (_=>{
-	if (matchMedia('(display-mode: standalone)').matches) return;
+	if (!matchMedia('(display-mode: browser)').matches) return;
 	installButton = document.createElement("button");
 	installButton.setAttribute("id", "installButton");
 	installButton.innerHTML = "&#128242; Install";
-	installButton.style = "position:absolute; top:0; right:0; font-size: 16px; padding:8px 16px; margin:1em; opacity:0; transition:1s; ";
+	installButton.style = "position:absolute; top:0; right:0; font-size: 16px; padding:.5em 1em; margin:1em; opacity:0; transition:1s; ";
 	let installPromptEvent;
 	addEventListener("beforeinstallprompt", e=> {
 		installPromptEvent = e;
@@ -11,6 +11,7 @@
 		requestAnimationFrame(_=> installButton.style.opacity = 1);
 	});
 	installButton.onclick = (_=>{
-		installPromptEvent.prompt().finally(installButton.remove);
+		installPromptEvent.prompt();
+		installButton.remove();
 	});
 })();

@@ -3,12 +3,12 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,minimum-scale=1.0,maximum-scale=3.0" />
 
 <style>
-body {
+html, body {
 	margin: 0;
+	height: 100svh;
+	background: #000;
 	font: 14px sans-serif;
 	color: white;
-	background: light-dark(#fff, #222);
-	height: 100svh;
 	contain: content;
 }
 main {
@@ -25,6 +25,7 @@ main {
 	overflow: hidden; /* prevent scrollbar overflowing border-radius */
 }
 @media (any-pointer: fine) and (hover: hover) { /* if PC, page looks like a phone */
+	body { background: light-dark(#fff, #222) }
 	main {
 		aspect-ratio: 9 / 16;
 		height: calc(900px - 32px); /* 2x 15px shadow + 1px border */

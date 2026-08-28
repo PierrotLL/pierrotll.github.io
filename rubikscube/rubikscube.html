@@ -9,26 +9,23 @@
 <script src=" https://cdn.jsdelivr.net/npm/@easy-pwa/beforeinstallprompt-polyfill@1.0.0-BETA1/dist/beforeinstallprompt-polyfill.min.js "></script>
 
 <style>
-html { height: 100% }
+html, body { height: 100svh }
 body {
-	position: relative;
 	margin: 0;
-	min-height: 100%;
-	background: black;
-	font-family: sans-serif;
-	font-size: 16px;
-	color: black;
+	background: #000;
+	font: 16px sans-serif;
+	color: #000;
 }
 
 #scene {
 	position: fixed;
 	z-index: 0;
-	width: 100svw;
+	width: 100vw;
 	height: 100svh;
 	contain: strict;
 	user-select: none;
 	perspective: 1200px;
-	font-size: min(60vmin, max(40vmin, 25vh)); /* cube size */
+	font-size: min(60vmin, max(40vmin, 25svh)); /* cube size */
 	background: radial-gradient(circle at 50% calc(50% + 15vmin), #999, #000);
 	cursor: move;
 }
@@ -42,8 +39,8 @@ body.grabbing * {
 
 #cube {
 	position: fixed;
-	top: 50dvh;
-	left: 50dvw;
+	top: 50%;
+	left: 50%;
 }
 .will-transform, .will-transform > div { will-change: transform }
 
@@ -51,7 +48,7 @@ body.grabbing * {
 	width: 1em;
 	height: 1em;
 	position: absolute;
-	background: black;
+	background: #000;
 	border-radius: 15%;
 	translate: -50% -50%;
     outline: 1px solid transparent; /* webkit aliasing */
@@ -86,7 +83,7 @@ body.grabbing * {
 
 .flat .face { border-radius: 0; backface-visibility: hidden; outline: none; }
 .flat .inner { display: none; }
-.flat .sticker { box-shadow: none; outline: none; }
+.flat .sticker { box-shadow: unset; outline: none; }
 
 
 #menu {
@@ -101,14 +98,14 @@ body.grabbing * {
 label {
 	display: block;
 	margin-top: .5em;
-	color: white;
+	color: #fff;
 }
 input, select, button {
 	box-sizing: border-box;
 	padding: .5em 1em;
 	font-size: inherit;
 	text-align: center;
-	color: black;
+	color: #000;
 }
 select, input[type="text"] { width: 9em }
 
@@ -123,9 +120,9 @@ select, input[type="text"] { width: 9em }
 	min-height: 2em;
 	--max-width: min(calc(100vw - 2em), 500px);
 	border-radius: 1em;
-	border: solid 1px white;
+	border: solid 1px #fff;
 	background: linear-gradient(aqua, navy);
-	color: white;
+	color: #fff;
 	display: flex;
 	align-items: center;
 }
@@ -141,7 +138,7 @@ select, input[type="text"] { width: 9em }
 	max-height: 10em;
 	transition: max-width .5s, max-height .5s .3s;
 }
-#helpButton > div:has(#help:empty) {
+#helpButton > div:has(:empty) {
 	max-width: 0;
 	max-height: calc(2em - 2px);
 }
@@ -175,10 +172,10 @@ select, input[type="text"] { width: 9em }
 	margin: 1em;
 	opacity: 0;
 }
+#saveIcon:before { content: "\1F4BE" }
 .saved { animation: 1s linear saved }
 @keyframes saved {
-	 20% { opacity: 1 }
-	 80% { opacity: 1 }
+	20%, 80% { opacity: 1 }
 	100% { opacity: 0 }
 }
 </style>
@@ -214,7 +211,7 @@ select, input[type="text"] { width: 9em }
 	</div>
 	<button id=helpButton><div><div id=help></div></div></button>
 	<div id=fps></div>
-	<div id=saveIcon>&#128190;</div>
+	<div id=saveIcon></div>
 </body>
 
 <script>
@@ -237,27 +234,19 @@ function buildCube(size) {
 		for (let y=-max ; y<=max ; y++) {
 			for (let z=-max ; z<=max ; z++) {
 				if (Math.abs(x)==max || Math.abs(y)==max || Math.abs(z)==max) {
-					let piece = document.createElement("div");
-					piece.setAttribute("x", x);
-					piece.setAttribute("y", y);
-					piece.setAttribute("z", z);
+					let piece = cube.appendChild(document.createElement("div"));
+					Object.entries({x:x,y:y,z:z}).forEach(([k,v]) => piece.setAttribute(k,v));
 					piece.style.transform = "translate3d("+x+"em,"+y+"em,"+z+"em)";
+					AXIS.forEach(axis => { // block view through border-radius
+						piece.appendChild(document.createElement("div")).className = "face inner "+axis;
+					});
 					FACES.forEach(f => {
-						let face = document.createElement("div");
+						let face = piece.appendChild(document.createElement("div"));
 						face.className = "face "+f.name;
 						if ((x && x == f.x*max) || (y && y == f.y*max) || (z && z == f.z*max)) {
-							let sticker = document.createElement("div");
-							sticker.className = "sticker "+f.color;
-							face.append(sticker);
+							face.appendChild(document.createElement("div")).className = "sticker "+f.color;
 						}
-						piece.append(face);
 					});
-					AXIS.forEach(axis => { // block view through border-radius
-						let inner = document.createElement("div");
-						inner.className = "face inner "+axis;
-						piece.append(inner);
-					});
-					cube.append(piece);
 				}
 			}
 		}
@@ -273,8 +262,8 @@ function getCubeSize() {
 }
 
 ["mousedown", "touchstart"].forEach(type => scene.addEventListener(type, touchstart));
-["mousemove", "touchmove"].forEach(type => window.addEventListener(type, touchmove, {passive: false}));
-["mouseup", "click", "touchend", "touchcancel"].forEach(type => window.addEventListener(type, touchend));
+["mousemove", "touchmove"].forEach(type => addEventListener(type, touchmove, {passive: false}));
+["mouseup", "click", "touchend", "touchcancel"].forEach(type => addEventListener(type, touchend));
 
 const touch = {};
 function touchstart(e) {
@@ -302,7 +291,7 @@ function touchmove(e) {
 		if (e.touches) e.preventDefault(); // prevent refresh on mobile
 		e.x ||= e.touches[0].clientX;
 		e.y ||= e.touches[0].clientY;
-		let pxToAngle = 360 / Math.min(window.innerWidth, window.innerHeight);
+		let pxToAngle = 360 / Math.min(innerWidth, innerHeight);
 		if (touch.face && !touch.piecesRotationDisabled) {
 			let vector = screenToSceneVector(e.x - touch.startX, e.y - touch.startY);
 			if (Math.hypot.apply(null, vector)*pxToAngle > 5) touch.axis ||= getMoveAxis(touch.face.classList[1], vector);
@@ -337,7 +326,7 @@ function touchend(e) {
 	cube.classList.remove("will-transform");
 	document.body.classList.remove("grabbing");
 }
-window.addEventListener("wheel", e => rotateCube(rotation, tilt, scale - e.deltaY * .001));
+addEventListener("wheel", e => rotateCube(rotation, tilt, scale - e.deltaY * .001));
 
 
 const DEG_TO_RAD = Math.PI/180;
@@ -386,7 +375,7 @@ function rotatePiecesPermanently(pieces, axis, angle) {
 	pieces.forEach(p => {
 		let vector = Vector["rotate"+axis.toUpperCase()](AXIS.map(p.getAttribute,p), angle*DEG_TO_RAD).map(i=>Math.round(i*2)/2);
 		AXIS.forEach((axis, i)=>p.setAttribute(axis, vector[i]));
-		p.style.transform = "translate3d("+vector.map(i=>i+"em").join()+")";
+		p.style.transform = "translate3d("+vector.join("em,")+"em)";
 		let stickers = Object.fromEntries(Array.from(p.getElementsByClassName("sticker")).map(sticker => [sticker.parentElement.classList[1], sticker]));
 		p.childNodes.forEach(face => { let s = stickers[swap[face.classList[1]]]; if (s) face.append(s); });
 	});
@@ -431,7 +420,7 @@ function getMoveName(selector, angle) {
 }
 
 function reverseMove(move) {
-	let [match, name, modifier] = move.match(/(\d*[xLlMmRryUuEeDdzBbSsFf]w?)('|2)?/i);
+	let [match, name, modifier] = move.match(/(\d*[xLlMmRryUuEeDdzBbSsFf]w?)('|2)?/);
 	return modifier==2 ? match : modifier=="'" ? name : name+"'";
 }
 
@@ -457,7 +446,7 @@ function shuffle() {
 }
 
 function applyMoves(str, duration=.4) {
-	let match = str && str.match(/(\d*)([xyzLRUDBFmes])(w)?('|2)?/i);
+	let match = str && str.match(/(\d*)([xLlMmRryUuEeDdzBbSsFf])(w)?('|2)?/);
 	if (match) {
 		let [move, depth, letter, wide, modifier] = match;
 		let isLowerCase = letter == letter.toLowerCase();
@@ -481,9 +470,8 @@ function applyMoves(str, duration=.4) {
 		let selector = '['+axis+'="'+(coord*(max-depth+1))+'"]';
 		if (wide) for (let i=0 ; i < depth-1 ; i++) selector += ',['+axis+'="'+(max-i)*coord+'"]';
 		if ("mes".indexOf(letter) >= 0) selector = "[x]:not("+selector+")";
-		if ("xyz".indexOf(letter) >= 0) selector = "["+axis+"]";
-		if (modifier == "'") angle *= -1;
-		if (modifier == "2") angle *= 2;
+		if ("xyz".indexOf(letter) >= 0) selector = "[x]";
+		if (modifier) angle *= modifier==2 ? 2 : -1;
 		finishAnimation();
 		rotatePiecesAnimated(cube.querySelectorAll(selector), axis, 0, angle, duration, Ease.easeInOutCubic);
 		history.add(move);
@@ -492,7 +480,7 @@ function applyMoves(str, duration=.4) {
 		if (str.length) {
 			touch.piecesRotationDisabled = true;
 			if (duration) setTimeout(applyMoves, duration*1e3, str, duration);
-			else applyMoves(str, duration);
+			else applyMoves(str, 0);
 		} else delete touch.piecesRotationDisabled;
 	} else delete touch.piecesRotationDisabled;
 }
@@ -580,7 +568,7 @@ const save = {
 	erase: _=> localStorage.removeItem("rubikscube")
 }
 save.load();
-window.onbeforeunload = save.save;
+onbeforeunload = save.save;
 addEventListener("visibilitychange", _=> document.hidden ? save.save() : null);
 
 
@@ -683,7 +671,7 @@ function fpsCounter(now) {
 	requestAnimationFrame(fpsCounter);
 	
 	if (now-last > 40 && !document.hidden) slowFrames++; else slowFrames=0;
-	if (slowFrames == 4) { cube.classList.add("flat"); helper.show("Low framerate detected.<br>Switched to simpler graphics mode."); }
+	if (slowFrames == 4 && !cube.classList.contains("flat")) { cube.classList.add("flat"); helper.show("Low framerate detected.<br>Switched to simpler graphics mode."); }
 	last = now;
 }
 fpsCounter(0);
@@ -724,10 +712,10 @@ class Ease {
 }
 
 
-function benchmark(fn, iterations) {
-	for (let name in fn) {
-		let start = performance.now();
-		while(iterations--) fn[name]();
+function benchmark(functions, iterations) {
+	for (let name in functions) {
+		let i=iterations, fn = functions[name], start = performance.now();
+		while(i--) fn();
 		console.log(name, performance.now() - start);
 	}
 }
