@@ -138,7 +138,7 @@ select, input[type="text"] { width: 9em }
 	max-height: 10em;
 	transition: max-width .5s, max-height .5s .3s;
 }
-#helpButton > div:has(:empty) {
+#helpButton > div:has(#help:empty) {
 	max-width: 0;
 	max-height: calc(2em - 2px);
 }
@@ -159,7 +159,7 @@ select, input[type="text"] { width: 9em }
 	top: 0;
 	right: 0;
 	color: grey;
-	font-size: .75em;
+	font: .75em monospace;
 }
 #fps:before { content: "FPS:" }
 
@@ -237,9 +237,7 @@ function buildCube(size) {
 					let piece = cube.appendChild(document.createElement("div"));
 					Object.entries({x:x,y:y,z:z}).forEach(([k,v]) => piece.setAttribute(k,v));
 					piece.style.transform = "translate3d("+x+"em,"+y+"em,"+z+"em)";
-					AXIS.forEach(axis => { // block view through border-radius
-						piece.appendChild(document.createElement("div")).className = "face inner "+axis;
-					});
+					AXIS.forEach(axis => piece.appendChild(document.createElement("div")).className = "face inner "+axis); // block view through border-radius
 					FACES.forEach(f => {
 						let face = piece.appendChild(document.createElement("div"));
 						face.className = "face "+f.name;
@@ -670,8 +668,13 @@ function fpsCounter(now) {
 	}
 	requestAnimationFrame(fpsCounter);
 	
-	if (now-last > 40 && !document.hidden) slowFrames++; else slowFrames=0;
-	if (slowFrames == 4 && !cube.classList.contains("flat")) { cube.classList.add("flat"); helper.show("Low framerate detected.<br>Switched to simpler graphics mode."); }
+	if (now-last > 40 && !document.hidden) {
+		slowFrames++;
+		if (slowFrames == 5 && !cube.classList.contains("flat")) {
+			cube.classList.add("flat");
+			helper.show("Low framerate detected.<br>Switched to simpler graphics mode.");
+		}
+	} else slowFrames=0;
 	last = now;
 }
 fpsCounter(0);
