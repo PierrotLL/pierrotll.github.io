@@ -5,7 +5,6 @@
 <style>
 html, body {
 	margin: 0;
-	height: 100svh;
 	background: #000;
 	font: 14px sans-serif;
 	color: white;
@@ -97,15 +96,9 @@ folder {
 folder grid {
 	grid-template-columns: repeat(3, auto);
 }
-folder app {
-	margin: 5%;
-}
-folder app:nth-child(n+10) {
-	display: none;
-}
-folder name {
-	display: none;
-}
+:not(.open) > folder app { margin: 5% }
+:not(.open) > folder app:nth-child(n+10) { display: none }
+:not(.open) > folder name { display: none }
 
 nav.hasopen {
 	overflow: unset;
@@ -139,7 +132,7 @@ app.open {
 	border-top: solid 1px #80808080;
 	border-bottom: solid 1px #80808080;
 }
-@media (min-aspect-ratio: 1.35) and (hover: none) {
+@media (min-aspect-ratio: 1.4) and (hover: none) {
 	.open folder { height:unset; overflow: unset; }
 	nav.hasopen { overflow: auto; }
 }
@@ -152,15 +145,6 @@ app.open {
 }
 .open folder grid {
 	grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-app.open app {
-	margin: calc(100% * 5 / 26);
-}
-app.open app {
-	display: block;
-}
-.open app name {
-	display: block;
 }
 </style>
 <main>
