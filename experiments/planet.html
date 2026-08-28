@@ -2,14 +2,13 @@
 <style>
 body {
 	margin: 0;
-	width: 100vw;
 	height: 100svh;
-	overflow: hidden;
-	perspective: 10000px;
+	contain: strict;
 }
 .scene {
 	height: 100%;
 	transform-style: preserve-3d;
+	perspective: 10000px;
 }
 .sphere {
 	position: absolute;
@@ -19,7 +18,7 @@ body {
 	aspect-ratio: 1;
 	transform-style: preserve-3d;
 	--tx: 0px;
-	transform: translateZ(-500px) rotateX(var(--rx)) rotateZ(var(--rz)) rotateY(var(--ry)) translateX(calc(var(--tx) * var(--sc))) scale3d(var(--sc),var(--sc),var(--sc));
+	transform: translateZ(-1000px) rotateX(var(--rx)) rotateZ(var(--rz)) rotateY(var(--ry)) translateX(calc(var(--tx) * var(--sc))) scale3d(var(--sc),var(--sc),var(--sc));
 }
 .lon, .lat {
 	position: absolute;
@@ -94,9 +93,9 @@ function frame(now) {
 frame(0);
 
 
-["mousedown", "touchstart"].forEach(type => window.addEventListener(type, touchstart));
-["mousemove", "touchmove"].forEach(type => window.addEventListener(type, touchmove, {passive: false}));
-["mouseup", "click", "touchend", "touchcancel"].forEach(type => window.addEventListener(type, touchend));
+["mousedown", "touchstart"].forEach(type => addEventListener(type, touchstart));
+["mousemove", "touchmove"].forEach(type => addEventListener(type, touchmove, {passive: false}));
+["mouseup", "touchend", "touchcancel"].forEach(type => addEventListener(type, touchend));
 
 function touchstart(e) {
 	previous = e.touches || (e.buttons==1 ? [{clientX:e.x, clientY:e.y}] : null);
@@ -106,7 +105,7 @@ function touchmove(e) {
 		let touches = e.touches || [{clientX:e.x, clientY:e.y}];
 		if (touches.length == 1) {
 			if (e.touches) e.preventDefault(); // prevent refresh on mobile
-			let factor = 360 / Math.min(window.innerWidth, window.innerHeight) * .3;
+			let factor = 360 / Math.min(innerWidth, innerHeight) * .3;
 			rx = normalizeAngle(rx - (touches[0].clientY - previous[0].clientY) * factor);
 			rz = normalizeAngle(rz + (touches[0].clientX - previous[0].clientX) * factor);
 		} else {
@@ -118,5 +117,5 @@ function touchmove(e) {
 function touchend(e) {
 	previous = null;
 }
-window.addEventListener("wheel", e => sc -= e.deltaY * .001);
+addEventListener("wheel", e => sc -= e.deltaY * .001);
 </script>
