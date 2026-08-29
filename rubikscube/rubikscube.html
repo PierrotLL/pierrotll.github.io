@@ -1,20 +1,25 @@
 <!DOCTYPE html>
 <title>Rubik's Cube</title>
 <link rel="icon" type="image/png" href="icon-64.png" />
+<meta name="description" content="Play Rubik's Cube in your browser" />
 <meta name="viewport" content="width=device-width,initial-scale=1.0,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no,interactive-widget=resizes-content" />
 
 <link rel="manifest" href="rubikscube.webmanifest" />
-<script>if ("serviceWorker" in navigator) navigator.serviceWorker.register("rubikscube-sw.js");</script>
+<script>if (navigator.serviceWorker) navigator.serviceWorker.register("rubikscube-sw.js");</script>
 <script src="../pwaInstallButton.js"></script>
 <script src=" https://cdn.jsdelivr.net/npm/@easy-pwa/beforeinstallprompt-polyfill@1.0.0-BETA1/dist/beforeinstallprompt-polyfill.min.js "></script>
 
 <style>
-html, body { height: 100svh }
-body {
+html, body {
 	margin: 0;
+	height: 100%;
+	position: relative; /* helpButton position */
 	background: #000;
 	font: 16px sans-serif;
 	color: #000;
+}
+body.grabbing * {
+	cursor: grabbing !important;
 }
 
 #scene {
@@ -29,20 +34,20 @@ body {
 	background: radial-gradient(circle at 50% calc(50% + 15vmin), #999, #000);
 	cursor: move;
 }
-#scene * {
-	transform-style: preserve-3d;
-	cursor: grab;
-}
-body.grabbing * {
-	cursor: grabbing !important;
-}
+#scene div { transform-style: preserve-3d }
+#scene > div, #scene > div > div { will-change: transform }
 
 #cube {
 	position: fixed;
 	top: 50%;
 	left: 50%;
+	cursor: grab;
 }
-.will-transform, .will-transform > div { will-change: transform }
+
+.piece {
+	--rx: 0; --ry: 0; --rz: 0;
+	transform: rotateX(var(--rx)) rotateY(var(--ry)) rotateZ(var(--rz)) translate3d(calc(1em*var(--x)),calc(1em*var(--y)),calc(1em*var(--z)));
+}
 
 .face {
 	width: 1em;
@@ -79,22 +84,77 @@ body.grabbing * {
 .blue { background: blue }
 .green { background: green }
 
-[x*="0"][y*="0"]:not([z^="-"]) .front .sticker:before {content:"F"; font-size:.4em; position:absolute;top:50%;left:50%;translate:-50% -50%;}
-
-.flat .face { border-radius: 0; backface-visibility: hidden; outline: none; }
+.flat .face { border-radius: 0; backface-visibility: hidden; outline: unset; }
 .flat .inner { display: none; }
-.flat .sticker { box-shadow: unset; outline: none; }
+.flat .sticker { box-shadow: unset; outline: unset; }
+.flat + #compass { outline: unset; }
+
+#compass {
+	pointer-events: none;
+	position: fixed;
+	bottom: 16px;
+	left: 50%;
+	translate: -50%;
+	width: 32px;
+	aspect-ratio: 1;
+	z-index: -1;
+	background: linear-gradient(45deg, #55f, #009 50%, #600 50%, #e00);
+    outline: 1px solid transparent; /* webkit aliasing */
+	transform: rotateX(var(--rx)) rotateY(var(--ry)) rotateX(90deg) scale3d(.15,sin(45deg),.15) rotateZ(-45deg);
+}
+#compass:before {
+	content: "";
+	display: block;
+	position: absolute;
+	width: 100%;
+	height: 100%;
+	background: inherit;
+    outline: inherit;
+	transform: rotate3d(-1,1,0,60deg);
+}
+#compass:after {
+	content: "";
+	display: block;
+	position: absolute;
+	width: 100%;
+	height: 100%;
+	background: inherit;
+    outline: inherit;
+	transform: rotate3d(-1,1,0,120deg);
+}
+#compass div {
+	position: absolute;
+	width: 100%;
+	height: 100%;
+	border-radius: 50%;
+	background: #009;
+	transform: rotate3d(1,1,0,-90deg) scale(calc(1/sin(45deg)));
+	backface-visibility: hidden;
+}
+#compass div:before {
+	content: "";
+	display: block;
+	position: absolute;
+	width: 100%;
+	height: 100%;
+	border-radius: 50%;
+	background: #600;
+	transform: rotateX(180deg);
+	backface-visibility: hidden;
+}
 
 
 #menu {
 	display: inline-block;
 	padding: 1em;
 	margin-bottom: 3em;
-	transition: .4s;
 	max-height: 2em;
 	contain: paint;
 }
+#menu, #openMenu * { transition: .4s }
 #menu div, #menu form { display: flex; gap: .3em }
+select, input[type="text"] { width: 9em }
+#menu * button { flex-grow: 1 }
 label {
 	display: block;
 	margin-top: .5em;
@@ -107,7 +167,6 @@ input, select, button {
 	text-align: center;
 	color: #000;
 }
-select, input[type="text"] { width: 9em }
 
 
 #helpButton {
@@ -183,30 +242,31 @@ select, input[type="text"] { width: 9em }
 <body>
 	<div id=scene>
 		<div id=cube></div>
+		<div id=compass><div></div></div>
 	</div>
 	
 	<div id=menu>
-		<button onclick="[menu.style.maxHeight, this.firstChild.style.rotate] = menu.style.maxHeight ? ['', ''] : ['16em', '45deg']"><div style="transition:.4s">+</div></button>
+		<button id=openMenu><div>+</div></button>
 		<label for=cubeSize>Cube size</label>
 		<div>
-			<select id=cubeSize onchange="buildCube(this.value); history.clear(); save.erase(); helper.hide();">
+			<select id=cubeSize>
 				<option value=2>2x2x2</option>
 				<option value=3>3x3x3</option>
 				<option value=4>4x4x4</option>
 				<option value=5>5x5x5</option>
 			</select>
-			<button onclick="shuffle()" style="flex-grow:1">Shuffle</button>
+			<button id=scrambleButton>Scramble</button>
 		</div>
 		<label for=move>Movements input</label>
-		<form onsubmit="parseInput(move.value); move.value=move.placeholder=''; return false">
+		<form>
 			<input type=text id=move placeholder="L R' U2 d Fw x" autocomplete="off" />
-			<input type=submit value="Apply" style="flex-grow:1" />
+			<button type=submit>Apply</button>
 		</form>
 		<label for=history>History</label>
 		<div>
 			<input type=text id=history autocomplete="off" disabled />
-			<button id=backward onclick="history.back()" disabled>&lt;</button>
-			<button id=forward onclick="history.forward()" disabled>&gt;</button>
+			<button id=backward disabled>&lt;</button>
+			<button id=forward disabled>&gt;</button>
 		</div>
 	</div>
 	<button id=helpButton><div><div id=help></div></div></button>
@@ -215,6 +275,8 @@ select, input[type="text"] { width: 9em }
 </body>
 
 <script>
+openMenu.onclick = e=> [menu.style.maxHeight, openMenu.firstElementChild.style.rotate] = menu.style.maxHeight ? ['', ''] : ['16em', '45deg'];
+
 const AXIS = ["x", "y", "z"];
 const FACES = [
 	{name:"up", x:0, y:-1, z:0, color:"red"},
@@ -225,18 +287,21 @@ const FACES = [
 	{name:"right", x:1, y:0, z:0, color:"blue"}];
 const FACES_VECTOR = Object.fromEntries(FACES.map(f => [ f.name, [f.x, f.y, f.z] ]));
 
+const pieces = new Map();
 function buildCube(size) {
 	cube.innerHTML = "";
 	cube.style.fontSize = 1/size+"em";
 	cube.classList.remove("flat");
 	let max = Math.floor(size-1)/2;
+	pieces.clear();
 	for (let x=-max ; x<=max ; x++) {
 		for (let y=-max ; y<=max ; y++) {
 			for (let z=-max ; z<=max ; z++) {
 				if (Math.abs(x)==max || Math.abs(y)==max || Math.abs(z)==max) {
 					let piece = cube.appendChild(document.createElement("div"));
-					Object.entries({x:x,y:y,z:z}).forEach(([k,v]) => piece.setAttribute(k,v));
-					piece.style.transform = "translate3d("+x+"em,"+y+"em,"+z+"em)";
+					piece.className = "piece";
+					pieces.set(piece, {e:piece, x:x, y:y, z:z});
+					piece.style = "--x:"+x+";--y:"+y+";--z:"+z;
 					AXIS.forEach(axis => piece.appendChild(document.createElement("div")).className = "face inner "+axis); // block view through border-radius
 					FACES.forEach(f => {
 						let face = piece.appendChild(document.createElement("div"));
@@ -251,12 +316,22 @@ function buildCube(size) {
 	}
 }
 buildCube(cubeSize.value = 3);
-
+cubeSize.onchange = _=> {
+	buildCube(cubeSize.value);
+	history.clear();
+	save.erase();
+	helper.hide();
+}
 function getMaxCoord() {
-	return Math.abs(cube.firstChild.getAttribute("x"));
+	return Math.abs(pieces.get(cube.firstElementChild).x);
 }
 function getCubeSize() {
-	return Math.ceil(Math.cbrt(cube.childElementCount));
+	return Math.ceil(Math.cbrt(pieces.size));
+}
+function getPieces(selector) {
+	if (!selector) return pieces;
+	if (selector[0] instanceof Array) return selector.map(getPieces).flat();
+	return Array.from(pieces.values()).filter(o=>o[selector[0]]==selector[1]);
 }
 
 ["mousedown", "touchstart"].forEach(type => scene.addEventListener(type, touchstart));
@@ -272,9 +347,8 @@ function touchstart(e) {
 	} else if (e.touches || e.buttons == 1) {
 		touch.startX = touch.lastX = e.x || e.touches[0].clientX;
 		touch.startY = touch.lastY = e.y || e.touches[0].clientY;
-		touch.down = e.target.closest("#scene") != null;
-		if (touch.down) cube.classList.add("will-transform");
 		touch.face = e.target.closest(".face");
+		touch.down = e.target == scene || touch.face != null;
 		if (touch.face) document.body.classList.add("grabbing");
 	}
 }
@@ -295,8 +369,8 @@ function touchmove(e) {
 			if (Math.hypot.apply(null, vector)*pxToAngle > 5) touch.axis ||= getMoveAxis(touch.face.classList[1], vector);
 			if (touch.axis) {
 				finishAnimation();
-				touch.selector ||= '['+touch.axis[0]+'="'+touch.face.parentElement.getAttribute(touch.axis[0])+'"]';
-				touch.pieces ||= cube.querySelectorAll(touch.selector);
+				touch.selector ||= [ touch.axis[0], pieces.get(touch.face.parentElement)[touch.axis[0]] ];
+				touch.pieces ||= getPieces(touch.selector);
 				touch.lastAngle = vector[touch.axis[1]] * touch.axis[2] * pxToAngle;
 				
 				//rotatePiecesTemporarily(touch.pieces, touch.axis[0], touch.lastAngle);
@@ -318,14 +392,26 @@ function touchend(e) {
 		rotatePiecesAnimated(touch.pieces, touch.axis[0], touch.lastAngle, toAngle, .1, Ease.easeInCubic);
 		toAngle = normalizeAngle(toAngle);
 		if (toAngle) history.add(getMoveName(touch.selector, toAngle));
+		if (navigator.vibrate) navigator.vibrate(20);
 	}
 	touch.down = false;
 	touch.face = touch.axis = touch.selector = touch.pieces = null;
-	cube.classList.remove("will-transform");
 	document.body.classList.remove("grabbing");
 }
 addEventListener("wheel", e => rotateCube(rotation, tilt, scale - e.deltaY * .001));
 
+onkeydown = e => {
+	if (e.target != document.body) return;
+	switch (e.key) {
+		case "ArrowUp": rotateCube(rotation, tilt+22.5, scale); break;
+		case "ArrowDown": rotateCube(rotation, tilt-22.5, scale); break;
+		case "ArrowLeft": rotateCube(rotation-22.5, tilt, scale); break;
+		case "ArrowRight": rotateCube(rotation+22.5, tilt, scale); break;
+		case "+": rotateCube(rotation, tilt, Math.round((scale+.25)*4)/4); break;
+		case "-": rotateCube(rotation, tilt, Math.round((scale-.25)*4)/4); break;
+		default: if ("XYZLRUDBFMES".includes(e.key.toUpperCase())) parseInput((e.altKey ? e.key.toLowerCase() : e.key.toUpperCase()) + (e.shiftKey ? "'":""));
+	}
+}
 
 const DEG_TO_RAD = Math.PI/180;
 function normalizeAngle(a) {
@@ -338,7 +424,7 @@ function rotateCube(x, y, s) {
 	tilt = Math.min(Math.max(y, -90), 90);
 	scale = Math.min(Math.max(s, .5), 1.5);
 	cancelAnimationFrame(touch.animation);
-	touch.animation = requestAnimationFrame(_=> cube.style.transform = "rotateX("+tilt+"deg) rotateY("+rotation+"deg) scale3d("+scale+","+scale+","+scale+")");
+	touch.animation = requestAnimationFrame(_=> (cube.style.transform = "rotateX("+tilt+"deg) rotateY("+rotation+"deg) scale3d("+scale+","+scale+","+scale+")", compass.style = "--rx:"+tilt+"deg;--ry:"+rotation+"deg;"));
 }
 rotateCube(-30, -20, 1);
 
@@ -355,7 +441,7 @@ function getFacesSwap(axis, angle) {
 	let swap = {};
 	let vector2Face = Object.fromEntries(Object.entries(FACES_VECTOR).map(([k,v])=>[v.join(),k]));
 	for (let i in FACES_VECTOR) {
-		let vector = Vector["rotate"+axis.toUpperCase()](FACES_VECTOR[i], -angle*DEG_TO_RAD).map(Math.round);
+		let vector = Vector[axis](FACES_VECTOR[i], -angle*DEG_TO_RAD).map(Math.round);
 		swap[i] = vector2Face[vector.join()];
 	}
 	return swap;
@@ -363,19 +449,19 @@ function getFacesSwap(axis, angle) {
 
 function rotatePiecesTemporarily(pieces, axis, angle) {
 	angle &&= normalizeAngle(angle);
-	let rotation = angle ? "rotate"+axis+"("+angle+"deg) " : "";
-	pieces.forEach(p=>p.style.transform = rotation+"translate3d("+AXIS.map(p.getAttribute,p).join("em,")+"em)");
+	let rotation = angle ? "--r"+axis+":"+angle+"deg;" : "";
+	pieces.forEach(p=>p.e.style = rotation+"--x:"+p.x+";--y:"+p.y+";--z:"+p.z);
 }
 
 function rotatePiecesPermanently(pieces, axis, angle) {
 	if (normalizeAngle(angle) == 0) return rotatePiecesTemporarily(pieces, axis, 0);
 	let swap = getFacesSwap(axis, angle);
 	pieces.forEach(p => {
-		let vector = Vector["rotate"+axis.toUpperCase()](AXIS.map(p.getAttribute,p), angle*DEG_TO_RAD).map(i=>Math.round(i*2)/2);
-		AXIS.forEach((axis, i)=>p.setAttribute(axis, vector[i]));
-		p.style.transform = "translate3d("+vector.join("em,")+"em)";
-		let stickers = Object.fromEntries(Array.from(p.getElementsByClassName("sticker")).map(sticker => [sticker.parentElement.classList[1], sticker]));
-		p.childNodes.forEach(face => { let s = stickers[swap[face.classList[1]]]; if (s) face.append(s); });
+		let vector = Vector[axis]([p.x,p.y,p.z], angle*DEG_TO_RAD).map(i=>Math.round(i*2)/2);
+		vector.forEach((v, i) => p[AXIS[i]] = v);
+		p.e.style = "--x:"+p.x+";--y:"+p.y+";--z:"+p.z;
+		let stickers = Object.fromEntries(Array.from(p.e.getElementsByClassName("sticker")).map(sticker => [sticker.parentElement.classList[1], sticker]));
+		p.e.childNodes.forEach(face => { let s = stickers[swap[face.classList[1]]]; if (s) face.append(s); });
 	});
 }
 
@@ -402,9 +488,7 @@ function finishAnimation() {
 
 
 function getMoveName(selector, angle) {
-	let max = getMaxCoord();
-	let axis = selector.charAt(1);
-	let coord = parseFloat(selector.slice(4, -2));
+	let max = getMaxCoord(), [axis, coord] = selector;
 	let move = {
 		x: [ ["L",-1],["M",-1],["R",1] ],
 		y: [ ["U",-1],["E",1],["D",1] ],
@@ -436,12 +520,14 @@ function parseInput(str) {
 	}
 	applyMoves(str);
 }
+document.forms[0].onsubmit = _=> { parseInput(move.value); move.value=move.placeholder=""; return false }
 
-function shuffle() {
-	const randomInt = n => parseInt(Math.random() * n);  
+function scramble() {
+	let randomInt = n => parseInt(Math.random() * n);
 	applyMoves(Array(10*getCubeSize()+randomInt(10)).fill(0).map(i=>"LMRUEDBSFlrudbf".charAt(randomInt(15))+"'2".charAt(randomInt(3))).join(""), 0);
 	history.clear();
 }
+scrambleButton.onclick = scramble;
 
 function applyMoves(str, duration=.4) {
 	let match = str && str.match(/(\d*)([xLlMmRryUuEeDdzBbSsFf])(w)?('|2)?/);
@@ -465,13 +551,13 @@ function applyMoves(str, duration=.4) {
 		}[letter.toLowerCase()];
 		if (max == 1 && isLowerCase) wide = true;
 		depth ||= wide || isLowerCase ? 2 : 1;
-		let selector = '['+axis+'="'+(coord*(max-depth+1))+'"]';
-		if (wide) for (let i=0 ; i < depth-1 ; i++) selector += ',['+axis+'="'+(max-i)*coord+'"]';
-		if ("mes".indexOf(letter) >= 0) selector = "[x]:not("+selector+")";
-		if ("xyz".indexOf(letter) >= 0) selector = "[x]";
+		let selector = [[axis, coord*(max-depth+1)]];
+		if (wide) for (let i=0 ; i < depth-1 ; i++) selector.push([axis, (max-i)*coord]);
+		if ("mes".indexOf(letter) >= 0) { selector = []; for (let i=-max ; i <= max ; i++) i && selector.push([axis, i]); }
+		if ("xyz".indexOf(letter) >= 0) selector = null;
 		if (modifier) angle *= modifier==2 ? 2 : -1;
 		finishAnimation();
-		rotatePiecesAnimated(cube.querySelectorAll(selector), axis, 0, angle, duration, Ease.easeInOutCubic);
+		rotatePiecesAnimated(getPieces(selector), axis, 0, angle, duration, Ease.easeInOutCubic);
 		history.add(move);
 		
 		str = str.substring(str.indexOf(move)+move.length);
@@ -525,11 +611,14 @@ const history = {
 		forward.disabled = history.data.length == history.current;
 	}
 }
+backward.onclick = history.back;
+forward.onclick = history.forward;
 
 
 function getOrderedStickers() {
-	function coord(sticker, axis) { return sticker.parentElement.parentElement.getAttribute(axis); }
-	return stickers = Array.from(cube.getElementsByClassName("sticker")).sort((a, b) => coord(a,"x")-coord(b,"x") || coord(a,"y")-coord(b,"y") || coord(a,"z")-coord(b,"z"));
+	let stickers = Array.from(cube.getElementsByClassName("sticker")), map = new Map();
+	stickers.forEach(s => map.set(s, pieces.get(s.parentElement.parentElement)));
+	return stickers.sort((a, b) => map.get(a).x-map.get(b).x || map.get(a).y-map.get(b).y || map.get(a).z-map.get(b).z || a.parentElement.classList[1].charCodeAt(0)-b.parentElement.classList[1].charCodeAt(0));
 }
 const save = {
 	timeout: null,
@@ -575,9 +664,9 @@ class RubiksCube {
 		this.corners = [];
 		this.edges = [];
 		this.centers = [];
-		for (let i=0 ; i<6 ; i++) this.corners.push([0,0]); // [position, orientation]
-		for (let i=0 ; i<12*(size-2) ; i++) this.edges.push([0,0]);
-		for (let i=0 ; i<6*(size-2)**2 ; i++) this.centers.push([0,0]);
+		for (let i=0 ; i<6 ; i++) this.corners.push([i,0]); // [position, orientation]
+		for (let i=0 ; i<12*(size-2) ; i++) this.edges.push([i,0]);
+		for (let i=0 ; i<6*(size-2)**2 ; i++) this.centers.push([i,0]);
 	}
 	static fromHTML(html) {
 		let size = Math.ceil(Math.cbrt(html.childElementCount));
@@ -599,11 +688,11 @@ const helper = {
 	get: _=> {
 		let cubeSize = getCubeSize();
 		let facesCompleted = helper.facesCompleted();
-		if (facesCompleted.length == 6) return "The puzzle is resolved. Shuffle it.";
+		if (facesCompleted.length == 6) return "The puzzle is resolved. Scramble it.";
 		if (facesCompleted.length == 0) return "First solve one face (with its crown).";
 		if (cubeSize == 2) return "Now the other face.";
 		else {
-			let max = facesCompleted.map(([name, color]) => helper.internalLayerCompleted(name)).reduce(Math.max);
+			let max = Math.max.apply(null, facesCompleted.map(([name, color]) => helper.internalLayerCompleted(name)));
 			if (cubeSize == 3) {
 				if (max) return "Internal layer done. Now the last face.";
 				else return "First face done. Now the internal layer.";
@@ -616,17 +705,12 @@ const helper = {
 			}
 		}
 	},
-	getPieceType: piece => {
-		let max = getMaxCoord();
-		let n = AXIS.map(piece.getAttribute, piece).filter(i => Math.abs(i) == max).length;
-		return ["center", "edge", "corner"][n-1];
-	},
 	facesCompleted: _=> {
 		let max = getMaxCoord();
 		let completedFaces = [];
 		FACES.forEach(f => {
 			let [axis, coord] = Object.entries(f).filter(([k,v])=>Math.abs(v))[0];
-			let pieces = cube.querySelectorAll('['+axis+'="'+(coord*max)+'"]');
+			let pieces = getPieces([axis, coord*max]);
 			let orientations = helper.piecesOriented(pieces);
 			if (orientations) completedFaces.push([f.name, orientations[f.name]]);
 		});
@@ -636,7 +720,7 @@ const helper = {
 		let max = getMaxCoord();
 		let coord = FACES_VECTOR[face].filter(i=>i)[0], axis = AXIS[FACES_VECTOR[face].indexOf(coord)];
 		for (let i=1, l = getCubeSize()-1 ; i<l ; i++) {
-			let pieces = cube.querySelectorAll('['+axis+'="'+(max-i)*coord+'"]');
+			let pieces = getPieces([axis, (max-i)*coord]);
 			if (!helper.piecesOriented(pieces)) return i-1;
 		}
 		return getCubeSize() - 2;
@@ -644,7 +728,7 @@ const helper = {
 	piecesOriented: (pieces) => {
 		let facesColor = {};
 		for (let piece of pieces) {
-			for (let face of piece.childNodes) {
+			for (let face of piece.e.childNodes) {
 				let sticker = face.firstChild;
 				if (sticker) {
 					facesColor[face.classList[1]] ||= sticker.classList[1];
@@ -705,6 +789,9 @@ class Vector {
 			vector[2]
 		];
 	}
+	static x=Vector.rotateX /* shortcuts */
+	static y=Vector.rotateY
+	static z=Vector.rotateZ
 }
 
 class Ease {
