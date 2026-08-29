@@ -401,7 +401,7 @@ function touchend(e) {
 addEventListener("wheel", e => rotateCube(rotation, tilt, scale - e.deltaY * .001));
 
 onkeydown = e => {
-	if (e.target != document.body) return;
+	if (e.target != document.body || e.ctrlKey || e.metaKey) return;
 	switch (e.key) {
 		case "ArrowUp": rotateCube(rotation, tilt+22.5, scale); break;
 		case "ArrowDown": rotateCube(rotation, tilt-22.5, scale); break;
