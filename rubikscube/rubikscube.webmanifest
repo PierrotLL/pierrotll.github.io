@@ -4,11 +4,12 @@
 	"description": "Created by PierrotLL",
 	"display": "standalone",
 	"start_url": "./rubikscube.html",
+	"categories": ["games"],
 	"icons": [{
 		"src": "icon-512.png",
 		"sizes": "512x512",
 		"type": "image/png",
-		purpose: "maskable"
+		"purpose": "maskable"
 	}],
 	"background_color": "#555555",
 	"theme_color": "#000000"
