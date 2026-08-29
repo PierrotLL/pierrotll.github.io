@@ -29,8 +29,8 @@ body.grabbing * {
 	height: 100svh;
 	contain: strict;
 	user-select: none;
-	perspective: 1200px;
 	font-size: min(60vmin, max(40vmin, 25svh)); /* cube size */
+	perspective: 3em;
 	background: radial-gradient(circle at 50% calc(50% + 15vmin), #999, #000);
 	cursor: move;
 }
@@ -46,7 +46,7 @@ body.grabbing * {
 
 .piece {
 	--rx: 0; --ry: 0; --rz: 0;
-	transform: rotateX(var(--rx)) rotateY(var(--ry)) rotateZ(var(--rz)) translate3d(calc(1em*var(--x)),calc(1em*var(--y)),calc(1em*var(--z)));
+	transform: rotateX(var(--rx)) rotateY(var(--ry)) rotateZ(var(--rz)) translate3d(var(--x),var(--y),var(--z));
 }
 
 .face {
@@ -64,9 +64,17 @@ body.grabbing * {
 .front { transform: translateZ(.5em) }
 .left { transform: rotateY(-90deg) translateZ(.5em) }
 .right { transform: rotateY(90deg) translateZ(.5em) }
-.inner { border-radius: 0 }
 .x { transform: rotateY(90deg) }
 .y { transform: rotateX(90deg) }
+.up:after, .back:after, .left:after { /* block view through border-radius */
+	content: "";
+	position: absolute;
+	top: 0;
+	width: 100%;
+	height: 100%;
+	background: inherit;
+	transform: translateZ(-.5em);
+}
 
 .sticker {
 	margin: .05em;
@@ -85,7 +93,7 @@ body.grabbing * {
 .green { background: green }
 
 .flat .face { border-radius: 0; backface-visibility: hidden; outline: unset; }
-.flat .inner { display: none; }
+.flat :after { display: none; }
 .flat .sticker { box-shadow: unset; outline: unset; }
 .flat + #compass { outline: unset; }
 
@@ -102,45 +110,27 @@ body.grabbing * {
     outline: 1px solid transparent; /* webkit aliasing */
 	transform: rotateX(var(--rx)) rotateY(var(--ry)) rotateX(90deg) scale3d(.15,sin(45deg),.15) rotateZ(-45deg);
 }
-#compass:before {
+#compass:before, #compass:after, #compass > div, #compass > div:after {
 	content: "";
-	display: block;
 	position: absolute;
 	width: 100%;
 	height: 100%;
 	background: inherit;
     outline: inherit;
-	transform: rotate3d(-1,1,0,60deg);
 }
-#compass:after {
-	content: "";
-	display: block;
-	position: absolute;
-	width: 100%;
-	height: 100%;
-	background: inherit;
-    outline: inherit;
-	transform: rotate3d(-1,1,0,120deg);
+#compass:before { transform: rotate3d(-1,1,0,60deg) }
+#compass:after { transform: rotate3d(-1,1,0,120deg) }
+#compass > div, #compass > div:after {
+	border-radius: 50%;
+	backface-visibility: hidden;
 }
 #compass div {
-	position: absolute;
-	width: 100%;
-	height: 100%;
-	border-radius: 50%;
 	background: #009;
 	transform: rotate3d(1,1,0,-90deg) scale(calc(1/sin(45deg)));
-	backface-visibility: hidden;
 }
-#compass div:before {
-	content: "";
-	display: block;
-	position: absolute;
-	width: 100%;
-	height: 100%;
-	border-radius: 50%;
+#compass div:after {
 	background: #600;
 	transform: rotateX(180deg);
-	backface-visibility: hidden;
 }
 
 
@@ -275,6 +265,7 @@ input, select, button {
 </body>
 
 <script>
+//(_=>{
 openMenu.onclick = e=> [menu.style.maxHeight, openMenu.firstElementChild.style.rotate] = menu.style.maxHeight ? ['', ''] : ['16em', '45deg'];
 
 const AXIS = ["x", "y", "z"];
@@ -301,8 +292,7 @@ function buildCube(size) {
 					let piece = cube.appendChild(document.createElement("div"));
 					piece.className = "piece";
 					pieces.set(piece, {e:piece, x:x, y:y, z:z});
-					piece.style = "--x:"+x+";--y:"+y+";--z:"+z;
-					AXIS.forEach(axis => piece.appendChild(document.createElement("div")).className = "face inner "+axis); // block view through border-radius
+					piece.style = "--x:"+x+"em;--y:"+y+"em;--z:"+z+"em";
 					FACES.forEach(f => {
 						let face = piece.appendChild(document.createElement("div"));
 						face.className = "face "+f.name;
@@ -392,7 +382,7 @@ function touchend(e) {
 		rotatePiecesAnimated(touch.pieces, touch.axis[0], touch.lastAngle, toAngle, .1, Ease.easeInCubic);
 		toAngle = normalizeAngle(toAngle);
 		if (toAngle) history.add(getMoveName(touch.selector, toAngle));
-		if (navigator.vibrate) navigator.vibrate(20);
+		if (navigator.vibrate) navigator.vibrate(10);
 	}
 	touch.down = false;
 	touch.face = touch.axis = touch.selector = touch.pieces = null;
@@ -449,8 +439,8 @@ function getFacesSwap(axis, angle) {
 
 function rotatePiecesTemporarily(pieces, axis, angle) {
 	angle &&= normalizeAngle(angle);
-	let rotation = angle ? "--r"+axis+":"+angle+"deg;" : "";
-	pieces.forEach(p=>p.e.style = rotation+"--x:"+p.x+";--y:"+p.y+";--z:"+p.z);
+	let property = "--r"+axis, value = angle ? angle+"deg" : "";
+	pieces.forEach(p=>p.e.style.setProperty(property, value));
 }
 
 function rotatePiecesPermanently(pieces, axis, angle) {
@@ -459,7 +449,7 @@ function rotatePiecesPermanently(pieces, axis, angle) {
 	pieces.forEach(p => {
 		let vector = Vector[axis]([p.x,p.y,p.z], angle*DEG_TO_RAD).map(i=>Math.round(i*2)/2);
 		vector.forEach((v, i) => p[AXIS[i]] = v);
-		p.e.style = "--x:"+p.x+";--y:"+p.y+";--z:"+p.z;
+		p.e.style = "--x:"+p.x+"em;--y:"+p.y+"em;--z:"+p.z+"em";
 		let stickers = Object.fromEntries(Array.from(p.e.getElementsByClassName("sticker")).map(sticker => [sticker.parentElement.classList[1], sticker]));
 		p.e.childNodes.forEach(face => { let s = stickers[swap[face.classList[1]]]; if (s) face.append(s); });
 	});
@@ -616,9 +606,9 @@ forward.onclick = history.forward;
 
 
 function getOrderedStickers() {
-	let stickers = Array.from(cube.getElementsByClassName("sticker")), map = new Map();
-	stickers.forEach(s => map.set(s, pieces.get(s.parentElement.parentElement)));
-	return stickers.sort((a, b) => map.get(a).x-map.get(b).x || map.get(a).y-map.get(b).y || map.get(a).z-map.get(b).z || a.parentElement.classList[1].charCodeAt(0)-b.parentElement.classList[1].charCodeAt(0));
+	let stickers = Array.from(cube.getElementsByClassName("sticker")), coord = new Map();
+	stickers.forEach(s => coord.set(s, pieces.get(s.parentElement.parentElement)));
+	return stickers.sort((a, b) => coord.get(a).x-coord.get(b).x || coord.get(a).y-coord.get(b).y || coord.get(a).z-coord.get(b).z || a.parentElement.classList[1].charCodeAt(0)-b.parentElement.classList[1].charCodeAt(0));
 }
 const save = {
 	timeout: null,
@@ -672,7 +662,14 @@ class RubiksCube {
 		let size = Math.ceil(Math.cbrt(html.childElementCount));
 		let cube = new RubiksCube(size);
 		html.childNodes.forEach(piece => {
-			let stickers = Array.from(piece.children).reduce(face=>face.firstChild).map(face => [face.classList[1], face.firstChild.classList[1]]);
+			let stickers = Array.from(piece.children).filter(face=>face.firstChild).map(face => [face.classList[1], face.firstChild.classList[1]]);
+			let map = Object.entries(stickers);
+			let type = [cube.centers,cube.edges,cube.corners][stickers.length-1];
+			switch (stickers.length) {
+				case 1:
+					
+					break;
+			}
 		});
 		return cube;
 	}
@@ -746,7 +743,7 @@ let frames=0, seconds=0, last=0, slowFrames=0;
 function fpsCounter(now) {
 	if (now*.001 < seconds+1) frames++;
 	else {
-		fps.innerHTML = frames;
+		fps.innerText = frames;
 		seconds = parseInt(now*.001);
 		frames = 1;
 	}
@@ -800,6 +797,7 @@ class Ease {
 	static easeOutCubic = t=>1-(1-t)**3;
 	static easeInOutCubic = t=>t<.5 ? 4*t**3 : 1-(-2*t+2)**3/2;
 }
+//})();
 
 
 function benchmark(functions, iterations) {
