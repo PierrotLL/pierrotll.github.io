@@ -19,7 +19,7 @@ html, body {
 	font: 16px sans-serif;
 	color: #000;
 }
-body.grabbing * {
+.grabbing * {
 	cursor: grabbing !important;
 }
 
@@ -42,8 +42,8 @@ body.grabbing * {
 	position: fixed;
 	top: 50%;
 	left: 50%;
-	cursor: grab;
 	transform: rotateX(var(--rx)) rotateY(var(--ry)) scale3d(var(--sc),var(--sc),var(--sc));
+	cursor: grab;
 }
 
 .piece {
@@ -66,12 +66,9 @@ body.grabbing * {
 .front { transform: translateZ(.5em) }
 .left { transform: rotateY(-90deg) translateZ(.5em) }
 .right { transform: rotateY(90deg) translateZ(.5em) }
-.x { transform: rotateY(90deg) }
-.y { transform: rotateX(90deg) }
-.up:after, .back:after, .left:after { /* block view through border-radius */
+.up:before, .back:before, .left:before { /* block view through border-radius */
 	content: "";
 	position: absolute;
-	top: 0;
 	width: 100%;
 	height: 100%;
 	background: inherit;
@@ -95,7 +92,7 @@ body.grabbing * {
 .green { background: green }
 
 .flat .face { border-radius: 0; backface-visibility: hidden; outline: unset; }
-.flat :after { display: none; }
+.flat :before { display: none; }
 .flat .sticker { box-shadow: unset; outline: unset; }
 .flat + #compass { outline: unset; }
 
@@ -110,7 +107,7 @@ body.grabbing * {
 	z-index: -1;
 	background: linear-gradient(45deg, #55f, #009 50%, #600 50%, #e00);
     outline: 1px solid transparent; /* webkit aliasing */
-	transform: rotateX(var(--rx)) rotateY(var(--ry)) rotateX(90deg) scale3d(.15,sin(45deg),.15) rotateZ(-45deg);
+	transform: rotateX(var(--rx)) rotateY(var(--ry)) scale3d(.15,.15,sin(45deg)) rotate3d(-1,-1,0,-90deg);
 }
 #compass:before, #compass:after, #compass > div, #compass > div:after {
 	content: "";
@@ -147,7 +144,6 @@ body.grabbing * {
 #menu div, #menu form { display: flex; gap: .3em }
 select, input[type="text"] { width: 9em }
 #menu * button { flex-grow: 1 }
-option:checked { font-weight: bold }
 label {
 	display: block;
 	margin-top: .5em;
@@ -160,6 +156,7 @@ input, select, button {
 	text-align: center;
 	color: #000;
 }
+option:checked { font-weight: bold }
 
 
 #helpButton {
@@ -262,14 +259,14 @@ input, select, button {
 			<button id=forward disabled>&gt;</button>
 		</div>
 	</div>
-	<button id=helpButton><div><div id=help></div></div></button>
 	<div id=fps></div>
 	<div id=saveIcon></div>
+	<button id=helpButton><div><div id=help></div></div></button>
 </body>
 
 <script>
 //(_=>{
-openMenu.onclick = e=> [menu.style.maxHeight, openMenu.firstElementChild.style.rotate] = menu.style.maxHeight ? ['', ''] : ['16em', '45deg'];
+openMenu.onclick = _=> [menu.style.maxHeight, openMenu.firstElementChild.style.rotate] = menu.style.maxHeight ? ['', ''] : ['16em', '45deg'];
 
 const AXIS = ["x", "y", "z"];
 const FACES = [
@@ -279,22 +276,20 @@ const FACES = [
 	{name:"front", x:0, y:0, z:1, color:"yellow"},
 	{name:"left", x:-1, y:0, z:0, color:"green"},
 	{name:"right", x:1, y:0, z:0, color:"blue"}];
-const FACES_VECTOR = Object.fromEntries(FACES.map(f => [ f.name, [f.x, f.y, f.z] ]));
 
 const pieces = new Map();
 function buildCube(size) {
 	cube.innerHTML = "";
+	pieces.clear();
 	cube.style.fontSize = 1/size+"em";
 	cube.classList.remove("flat");
 	let max = Math.floor(size-1)/2;
-	pieces.clear();
 	for (let x=-max ; x<=max ; x++) {
 		for (let y=-max ; y<=max ; y++) {
 			for (let z=-max ; z<=max ; z++) {
 				if (Math.abs(x)==max || Math.abs(y)==max || Math.abs(z)==max) {
 					let piece = cube.appendChild(document.createElement("div"));
 					piece.className = "piece";
-					pieces.set(piece, {e:piece, x:x, y:y, z:z});
 					piece.style = "--x:"+x+"em;--y:"+y+"em;--z:"+z+"em";
 					FACES.forEach(f => {
 						let face = piece.appendChild(document.createElement("div"));
@@ -303,6 +298,7 @@ function buildCube(size) {
 							face.appendChild(document.createElement("div")).className = "sticker "+f.color;
 						}
 					});
+					pieces.set(piece, {e:piece, x:x, y:y, z:z});
 				}
 			}
 		}
@@ -359,7 +355,7 @@ function touchmove(e) {
 		let pxToAngle = 360 / Math.min(innerWidth, innerHeight);
 		if (touch.face && !touch.piecesRotationDisabled) {
 			let vector = screenToSceneVector(e.x - touch.startX, e.y - touch.startY);
-			if (Math.hypot.apply(null, vector)*pxToAngle > 5) touch.axis ||= getMoveAxis(touch.face.classList[1], vector);
+			touch.axis ||= Math.hypot.apply(null, vector)*pxToAngle > 5 ? getMoveAxis(touch.face.classList[1], vector) : null;
 			if (touch.axis) {
 				finishAnimation();
 				touch.selector ||= [ touch.axis[0], pieces.get(touch.face.parentElement)[touch.axis[0]] ];
@@ -370,7 +366,7 @@ function touchmove(e) {
 				/*	Brower may fire multiple move events in a single frame.
 					The following lines ensure rotatePiecesTemporarily is called only once before next rendering. */
 				cancelAnimationFrame(touch.animation);
-				touch.animation = requestAnimationFrame(((pieces, axis, angle) => _=> rotatePiecesTemporarily(pieces, axis, angle))(touch.pieces, touch.axis[0], touch.lastAngle));
+				touch.animation = requestAnimationFrame(_=> rotatePiecesTemporarily(touch.pieces, touch.axis[0], touch.lastAngle));
 			}
 		} else {
 			rotateCube(rotation + (e.x - touch.lastX) * pxToAngle, tilt - (e.y - touch.lastY) * pxToAngle, scale);
@@ -382,13 +378,13 @@ function touchmove(e) {
 function touchend(e) {
 	if (touch.axis) {
 		let toAngle = Math.round(touch.lastAngle / 90)*90;
+		cancelAnimationFrame(touch.animation);
 		rotatePiecesAnimated(touch.pieces, touch.axis[0], touch.lastAngle, toAngle, .1, Ease.easeInCubic);
 		toAngle = normalizeAngle(toAngle);
 		if (toAngle) history.add(getMoveName(touch.selector, toAngle));
 		if (navigator.vibrate) navigator.vibrate(10);
 	}
-	touch.down = false;
-	touch.face = touch.axis = touch.selector = touch.pieces = null;
+	touch.down = touch.face = touch.axis = touch.selector = touch.pieces = null;
 	document.body.classList.remove("grabbing");
 }
 addEventListener("wheel", e => rotateCube(rotation, tilt, scale - e.deltaY * .001));
@@ -396,13 +392,15 @@ addEventListener("wheel", e => rotateCube(rotation, tilt, scale - e.deltaY * .00
 onkeydown = e => {
 	if (e.target != document.body || e.ctrlKey || e.metaKey) return;
 	switch (e.key) {
-		case "ArrowUp": rotateCube(rotation, tilt+22.5, scale); break;
-		case "ArrowDown": rotateCube(rotation, tilt-22.5, scale); break;
-		case "ArrowLeft": rotateCube(rotation-22.5, tilt, scale); break;
-		case "ArrowRight": rotateCube(rotation+22.5, tilt, scale); break;
+		case "ArrowUp": rotateCube(rotation, e.shiftKey ? 22.5 : tilt+5, scale); break;
+		case "ArrowDown": rotateCube(rotation, e.shiftKey ? -22.5 : tilt-5, scale); break;
+		case "ArrowLeft": rotateCube(e.shiftKey ? Math.round((rotation-67.5)/45)*45+22.5 : rotation-5, tilt, scale); break;
+		case "ArrowRight": rotateCube(e.shiftKey ? Math.round((rotation+67.5)/45)*45-22.5 : rotation+5, tilt, scale); break;
 		case "+": rotateCube(rotation, tilt, Math.round((scale+.25)*4)/4); break;
 		case "-": rotateCube(rotation, tilt, Math.round((scale-.25)*4)/4); break;
-		default: if ("XYZLRUDBFMES".includes(e.key.toUpperCase())) parseInput((e.altKey ? e.key.toLowerCase() : e.key.toUpperCase()) + (e.shiftKey ? "'":""));
+		case "<": history.back(); break;
+		case ">": history.forward(); break;
+		default: if ("XYZLRUDBFMES".includes(e.key.toUpperCase())) e.preventDefault() || parseInput((e.altKey ? e.key.toLowerCase() : e.key.toUpperCase()) + (e.shiftKey ? "'":""));
 	}
 }
 
@@ -419,7 +417,7 @@ function rotateCube(x, y, s) {
 	cancelAnimationFrame(touch.animation);
 	touch.animation = requestAnimationFrame(_=> scene.style = "--rx:"+tilt+"deg;--ry:"+rotation+"deg;--sc:"+scale);
 }
-rotateCube(-30, -20, 1);
+rotateCube(-22.5, -22.5, 1);
 
 function screenToSceneVector(dx, dy) {
 	return Vector.rotateY(Vector.rotateX([dx, dy, 0], -tilt*DEG_TO_RAD), -rotation*DEG_TO_RAD);
@@ -427,15 +425,16 @@ function screenToSceneVector(dx, dy) {
 
 function getMoveAxis(face, vector) { // return [ axis name (x|y|z), scene vector component to use for rotation angle (0|1|2), vector component factor (-1|1) ]
 	let a = { up:[0,2],down:[2,0], front:[0,1],back:[1,0], left:[2,1],right:[1,2] }[face];
-	if (a) return Math.abs(vector[a[0]]) > Math.abs(vector[a[1]]) ? [AXIS[a[1]], a[0], 1] : [AXIS[a[0]], a[1], -1];
+	return Math.abs(vector[a[0]]) > Math.abs(vector[a[1]]) ? [AXIS[a[1]], a[0], 1] : [AXIS[a[0]], a[1], -1];
 }
 
+const FACES_VECTOR = Object.fromEntries(FACES.map(f => [ f.name, [f.x, f.y, f.z] ]));
+const VECTOR_FACE = Object.fromEntries(FACES.map(f => [ f.x+","+f.y+","+f.z, f.name ]));
 function getFacesSwap(axis, angle) {
 	let swap = {};
-	let vector2Face = Object.fromEntries(Object.entries(FACES_VECTOR).map(([k,v])=>[v.join(),k]));
 	for (let i in FACES_VECTOR) {
-		let vector = Vector[axis](FACES_VECTOR[i], -angle*DEG_TO_RAD).map(Math.round);
-		swap[i] = vector2Face[vector.join()];
+		let vector = Vector["rotate"+axis.toUpperCase()](FACES_VECTOR[i], -angle*DEG_TO_RAD).map(Math.round);
+		swap[i] = VECTOR_FACE[vector.join()];
 	}
 	return swap;
 }
@@ -449,7 +448,7 @@ function rotatePiecesPermanently(pieces, axis, angle) {
 	if (normalizeAngle(angle) == 0) return rotatePiecesTemporarily(pieces, axis, 0);
 	let swap = getFacesSwap(axis, angle);
 	pieces.forEach(p => {
-		let vector = Vector[axis]([p.x,p.y,p.z], angle*DEG_TO_RAD).map(i=>Math.round(i*2)/2);
+		let vector = Vector["rotate"+axis.toUpperCase()]([p.x,p.y,p.z], angle*DEG_TO_RAD).map(i=>Math.round(i*2)/2);
 		vector.forEach((v, i) => p[AXIS[i]] = v);
 		p.e.style = "--x:"+p.x+"em;--y:"+p.y+"em;--z:"+p.z+"em";
 		let stickers = Object.fromEntries(Array.from(p.e.getElementsByClassName("sticker")).map(sticker => [sticker.parentElement.classList[1], sticker]));
@@ -503,16 +502,16 @@ function parseInput(str) {
 	let moveRegex = /\d*[xLlMmRryUuEeDdzBbSsFf]w?['2]?/g;
 	str = str.replaceAll(/[XYZ]/g, m=>m.toLowerCase()); // xyz always in lower case
 	str = str.replaceAll(moveRegex, m=>" "+m); // add space between moves to avoid confusing pre/post numbers (slice number/turn quarters)
-	str = str.replaceAll(/(\d+)([LRUDBF])/gi, (m,n,l)=>n==2 ? l.toLowerCase() : (n>2?n:"")+l.toUpperCase()); // 1r or 1R => R, 2R => r, 3r => 3R
-	if (cubeSize == 2) str = str.replaceAll(/[MESw]/gi, "").replaceAll(/([lrudbf])/g, (m,l)=>l.toUpperCase()); // no inner slice nor wide move
-	else if (cubeSize == 3) str = str.replaceAll(/([LRUDBF])w/gi, (m,l)=>l.toLowerCase()); // for 3x3x3 r means Rw
-	else str = str.replace(/([lrudbf])w/g, (m,l)=>l.toUpperCase()+"w"); // rw is equivalent to Rw
+	str = str.replaceAll(/(\d+)([LRUDBF])/gi, (_,n,l)=>n==2 ? l.toLowerCase() : (n>2?n:"")+l.toUpperCase()); // 1r or 1R => R, 2R => r, 3r => 3R
+	if (cubeSize == 2) str = str.replaceAll(/[MESw]/gi, "").replaceAll(/([lrudbf])/g, (_,l)=>l.toUpperCase()); // no inner slice nor wide move
+	else if (cubeSize == 3) str = str.replaceAll(/([LRUDBF])w/gi, (_,l)=>l.toLowerCase()); // for 3x3x3 r means Rw
+	else str = str.replace(/([lrudbf])w/g, (_,l)=>l.toUpperCase()+"w"); // rw is equivalent to Rw
 	while (str.match(/\([^\(\)]+\)['\d]/)) { // nested groups
-		str = str.replaceAll(/\(([^\(\)]+)\)('|\d+)/g, (m,s,n)=>parseInt(n) ? s.repeat(n) : s.match(moveRegex).map(reverseMove).join(""));
+		str = str.replaceAll(/\(([^\(\)]+)\)('|\d+)/g, (_,s,n)=>parseInt(n) ? s.repeat(n) : s.match(moveRegex).map(reverseMove).join(""));
 	}
 	applyMoves(str);
 }
-document.forms[0].onsubmit = _=> { parseInput(move.value); move.value=move.placeholder=""; return false }
+move.form.onsubmit = _=> { parseInput(move.value); move.value=move.placeholder=""; return false }
 
 function scramble() {
 	let randomInt = n => parseInt(Math.random() * n);
@@ -543,11 +542,14 @@ function applyMoves(str, duration=.4) {
 		}[letter.toLowerCase()];
 		if (max == 1 && isLowerCase) wide = true;
 		depth ||= wide || isLowerCase ? 2 : 1;
-		let selector = [[axis, coord*(max-depth+1)]];
-		if (wide) for (let i=0 ; i < depth-1 ; i++) selector.push([axis, (max-i)*coord]);
-		if ("mes".indexOf(letter) >= 0) { selector = []; for (let i=-max ; i <= max ; i++) i && selector.push([axis, i]); }
-		if ("xyz".indexOf(letter) >= 0) selector = null;
+		
+		let selector;
+		if ("xyz".includes(letter));
+		else if ("mes".includes(letter)) selector = Array.from({length:max*2},(_,i)=> [ axis, i-max + (i<max ? 0:1) ]);
+		else if (wide) selector = Array.from({length:depth}, (_,i)=> [axis, (max-i)*coord]);
+		else selector = [axis, coord*(max-depth+1)];
 		if (modifier) angle *= modifier==2 ? 2 : -1;
+		
 		finishAnimation();
 		rotatePiecesAnimated(getPieces(selector), axis, 0, angle, duration, Ease.easeInOutCubic);
 		history.add(move);
@@ -649,7 +651,7 @@ const save = {
 }
 save.load();
 onbeforeunload = save.save;
-addEventListener("visibilitychange", _=> document.hidden ? save.save() : null);
+onvisibilitychange = _=> document.hidden ? save.save() : null;
 
 
 class RubiksCube {
@@ -692,7 +694,7 @@ const helper = {
 		if (facesCompleted.length == 0) return "First solve one face (with its crown).";
 		if (cubeSize == 2) return "Now the other face.";
 		else {
-			let max = Math.max.apply(null, facesCompleted.map(([name, color]) => helper.internalLayerCompleted(name)));
+			let max = Math.max.apply(null, facesCompleted.map(([name, color]) => helper.internalLayersCompleted(name)));
 			if (cubeSize == 3) {
 				if (max) return "Internal layer done. Now the last face.";
 				else return "First face done. Now the internal layer.";
@@ -716,7 +718,7 @@ const helper = {
 		});
 		return completedFaces;
 	},
-	internalLayerCompleted: face => {
+	internalLayersCompleted: face => {
 		let max = getMaxCoord();
 		let coord = FACES_VECTOR[face].filter(i=>i)[0], axis = AXIS[FACES_VECTOR[face].indexOf(coord)];
 		for (let i=1, l = getCubeSize()-1 ; i<l ; i++) {
@@ -789,9 +791,6 @@ class Vector {
 			vector[2]
 		];
 	}
-	static x=Vector.rotateX /* shortcuts */
-	static y=Vector.rotateY
-	static z=Vector.rotateZ
 }
 
 class Ease {
