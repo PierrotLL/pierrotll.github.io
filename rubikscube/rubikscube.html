@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <title>Rubik's Cube</title>
 <link rel="icon" type="image/png" href="icon-64.webp" />
+<link rel="apple-touch-icon" href="icon-512.png">
 <meta name="description" content="Play Rubik's Cube in your browser" />
 <meta name="viewport" content="width=device-width,initial-scale=1.0,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no,interactive-widget=resizes-content" />
 
@@ -42,11 +43,12 @@ body.grabbing * {
 	top: 50%;
 	left: 50%;
 	cursor: grab;
+	transform: rotateX(calc(var(--rx)*1deg)) rotateY(calc(var(--ry)*1deg)) scale3d(var(--sc),var(--sc),var(--sc));
 }
 
 .piece {
 	--rx: 0; --ry: 0; --rz: 0;
-	transform: rotateX(var(--rx)) rotateY(var(--ry)) rotateZ(var(--rz)) translate3d(var(--x),var(--y),var(--z));
+	transform: rotateX(calc(var(--rx)*1deg)) rotateY(calc(var(--ry)*1deg)) rotateZ(calc(var(--rz)*1deg)) translate3d(calc(var(--x)*1em),calc(var(--y)*1em),calc(var(--z)*1em));
 }
 
 .face {
@@ -100,15 +102,15 @@ body.grabbing * {
 #compass {
 	pointer-events: none;
 	position: fixed;
-	bottom: 16px;
+	bottom: 1rem;
 	left: 50%;
 	translate: -50%;
-	width: 32px;
+	width: 2rem;
 	aspect-ratio: 1;
 	z-index: -1;
 	background: linear-gradient(45deg, #55f, #009 50%, #600 50%, #e00);
     outline: 1px solid transparent; /* webkit aliasing */
-	transform: rotateX(var(--rx)) rotateY(var(--ry)) rotateX(90deg) scale3d(.15,sin(45deg),.15) rotateZ(-45deg);
+	transform: rotateX(calc(var(--rx)*1deg)) rotateY(calc(var(--ry)*1deg)) rotateX(90deg) scale3d(.15,sin(45deg),.15) rotateZ(-45deg);
 }
 #compass:before, #compass:after, #compass > div, #compass > div:after {
 	content: "";
@@ -145,6 +147,7 @@ body.grabbing * {
 #menu div, #menu form { display: flex; gap: .3em }
 select, input[type="text"] { width: 9em }
 #menu * button { flex-grow: 1 }
+option:checked { font-weight: bold }
 label {
 	display: block;
 	margin-top: .5em;
@@ -292,7 +295,7 @@ function buildCube(size) {
 					let piece = cube.appendChild(document.createElement("div"));
 					piece.className = "piece";
 					pieces.set(piece, {e:piece, x:x, y:y, z:z});
-					piece.style = "--x:"+x+"em;--y:"+y+"em;--z:"+z+"em";
+					piece.style = "--x:"+x+";--y:"+y+";--z:"+z;
 					FACES.forEach(f => {
 						let face = piece.appendChild(document.createElement("div"));
 						face.className = "face "+f.name;
@@ -313,10 +316,10 @@ cubeSize.onchange = _=> {
 	helper.hide();
 }
 function getMaxCoord() {
-	return Math.abs(pieces.get(cube.firstElementChild).x);
+	return Math.abs(pieces.values().next().value.x);
 }
 function getCubeSize() {
-	return Math.ceil(Math.cbrt(pieces.size));
+	return getMaxCoord()*2+1;
 }
 function getPieces(selector) {
 	if (!selector) return pieces;
@@ -414,7 +417,8 @@ function rotateCube(x, y, s) {
 	tilt = Math.min(Math.max(y, -90), 90);
 	scale = Math.min(Math.max(s, .5), 1.5);
 	cancelAnimationFrame(touch.animation);
-	touch.animation = requestAnimationFrame(_=> (cube.style.transform = "rotateX("+tilt+"deg) rotateY("+rotation+"deg) scale3d("+scale+","+scale+","+scale+")", compass.style = "--rx:"+tilt+"deg;--ry:"+rotation+"deg;"));
+	touch.animation = requestAnimationFrame(_=> scene.style = "--rx:"+tilt+";--ry:"+rotation+";--sc:"+scale);
+	//touch.animation = requestAnimationFrame(_=>{ cube.style.setProperty("--rx",tilt); cube.style.setProperty("--ry",rotation); cube.style.setProperty("--sc", scale); compass.style = "--rx:"+tilt+";--ry:"+rotation+";"; });
 }
 rotateCube(-30, -20, 1);
 
@@ -438,8 +442,7 @@ function getFacesSwap(axis, angle) {
 }
 
 function rotatePiecesTemporarily(pieces, axis, angle) {
-	angle &&= normalizeAngle(angle);
-	let property = "--r"+axis, value = angle ? angle+"deg" : "";
+	let property = "--r"+axis, value = angle ? normalizeAngle(angle) : null;
 	pieces.forEach(p=>p.e.style.setProperty(property, value));
 }
 
@@ -449,7 +452,7 @@ function rotatePiecesPermanently(pieces, axis, angle) {
 	pieces.forEach(p => {
 		let vector = Vector[axis]([p.x,p.y,p.z], angle*DEG_TO_RAD).map(i=>Math.round(i*2)/2);
 		vector.forEach((v, i) => p[AXIS[i]] = v);
-		p.e.style = "--x:"+p.x+"em;--y:"+p.y+"em;--z:"+p.z+"em";
+		p.e.style = "--x:"+p.x+";--y:"+p.y+";--z:"+p.z;
 		let stickers = Object.fromEntries(Array.from(p.e.getElementsByClassName("sticker")).map(sticker => [sticker.parentElement.classList[1], sticker]));
 		p.e.childNodes.forEach(face => { let s = stickers[swap[face.classList[1]]]; if (s) face.append(s); });
 	});
@@ -639,6 +642,7 @@ const save = {
 				history.data = data[2] ? data[2].split(",") : [];
 				history.current = parseInt(data[3]);
 				history.update();
+				return true;
 			}
 		}
 	},
