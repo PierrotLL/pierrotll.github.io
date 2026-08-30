@@ -1,4 +1,4 @@
-const cacheName = "rubikscube-2026-08-30-v2";
+const cacheName = "rubikscube-2026-08-30-v3";
 const contentToCache = [
 	"rubikscube.html",
 	"rubikscube.webmanifest",
@@ -32,7 +32,7 @@ self.addEventListener("fetch", e => {
 		caches.match(e.request)
 		//.then(cacheResponse => cacheResponse || fetch(e.request))
 		.then(cacheResponse =>
-			(console.log(cacheName, "fetch response from cache", e.request.url), cacheResponse)
+			(cacheResponse && console.log(cacheName, "fetch response from cache", e.request.url), cacheResponse)
 			||
 			fetch(e.request).then(r=>(console.log(cacheName, "fetch loaded", e.request.url),r),r=>(console.log(cacheName, "fetch load error", e.request.url, r),null))
 		)
