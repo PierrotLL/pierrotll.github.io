@@ -126,8 +126,9 @@ let x, y, dx, dy, grabbing, animation, matrix3d = new Matrix3D().identity();
 rotateCube(1,1,1);
 
 cube.addEventListener("pointerdown", touchstart);
-addEventListener("pointermove", touchmove, { passive: false });
+addEventListener("pointermove", touchmove);
 addEventListener("pointerup", touchend);
+addEventListener("touchmove", e=> grabbing ? e.preventDefault() : null); // prevent refresh on mobile
 
 function touchstart(e) {
 	document.body.classList.add("grabbing");
@@ -138,7 +139,6 @@ function touchstart(e) {
 }
 function touchmove(e) {
 	if (grabbing) {
-		e.preventDefault(); // prevent refresh on mobile
 		dx = e.x - x;
 		dy = e.y - y;
 		x = e.x;
