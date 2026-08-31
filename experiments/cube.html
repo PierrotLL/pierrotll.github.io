@@ -130,7 +130,7 @@ function rotateCube(x, y, z) {
 	cube.style.transform = matrix3d.css();
 }
 function frame(now) {
-	let inertia = .95 ** ((now-prev)/1e3*60);
+	let inertia = .95 ** ((now-prev)*.06);
 	dx *= inertia;
 	dy *= inertia;
 	prev = now;
