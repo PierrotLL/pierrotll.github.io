@@ -122,8 +122,21 @@ class Matrix3D extends Matrix {
 	css() { return "matrix3d("+this.reduce((s,v)=>s+","+v.toFixed(10))+")"; }
 }
 
-let x, y, dx, dy, grabbing, animation, matrix3d = new Matrix3D().identity();
+let grabbing, x, y, dx, dy, prev, animation, matrix3d = new Matrix3D().identity();
 rotateCube(1,1,1);
+
+function rotateCube(x, y, z) {
+	matrix3d = matrix3d.rotateX(x).rotateY(y).rotateZ(z);
+	cube.style.transform = matrix3d.css();
+}
+function frame(now) {
+	let inertia = .95 ** (1e3/60/(now-prev));
+	dx *= inertia;
+	dy *= inertia;
+	prev = now;
+	rotateCube(dy/200, -dx/200, 0);
+	if (Math.abs(dx)>.01 || Math.abs(dy)>.01) animation = requestAnimationFrame(frame);
+}
 
 cube.addEventListener("pointerdown", touchstart);
 addEventListener("pointermove", touchmove);
@@ -151,17 +164,7 @@ function touchend(e) {
 	document.body.classList.remove("grabbing");
 	grabbing = false;
 	cancelAnimationFrame(animation);
+	prev = performance.now();
 	animation = requestAnimationFrame(frame);
-}
-
-function frame() {
-	dx *= .95;
-	dy *= .95;
-	rotateCube(dy/200, -dx/200, 0);
-	if (Math.abs(dx)>.01 || Math.abs(dy)>.01) animation = requestAnimationFrame(frame);
-}
-function rotateCube(x, y, z) {
-	matrix3d = matrix3d.rotateX(x).rotateY(y).rotateZ(z);
-	cube.style.transform = matrix3d.css();
 }
 </script>
