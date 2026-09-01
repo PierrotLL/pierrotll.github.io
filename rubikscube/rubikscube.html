@@ -382,7 +382,6 @@ function touchend(e) {
 		rotatePiecesAnimated(touch.pieces, touch.axis[0], touch.lastAngle, toAngle, .1, Ease.easeInCubic);
 		toAngle = normalizeAngle(toAngle);
 		if (toAngle) history.add(getMoveName(touch.selector, toAngle));
-		if (navigator.vibrate) navigator.vibrate(10);
 	}
 	touch.down = touch.face = touch.axis = touch.selector = touch.pieces = null;
 	document.body.classList.remove("grabbing");
@@ -424,8 +423,8 @@ function screenToSceneVector(dx, dy) {
 }
 
 function getMoveAxis(face, vector) { // return [ axis name (x|y|z), scene vector component to use for rotation angle (0|1|2), vector component factor (-1|1) ]
-	let a = { up:[0,2],down:[2,0], front:[0,1],back:[1,0], left:[2,1],right:[1,2] }[face];
-	return Math.abs(vector[a[0]]) > Math.abs(vector[a[1]]) ? [AXIS[a[1]], a[0], 1] : [AXIS[a[0]], a[1], -1];
+	let axis = { up:[0,2],down:[2,0], front:[0,1],back:[1,0], left:[2,1],right:[1,2] }[face];
+	return Math.abs(vector[axis[0]]) > Math.abs(vector[axis[1]]) ? [AXIS[axis[1]], axis[0], 1] : [AXIS[axis[0]], axis[1], -1];
 }
 
 const FACES_VECTOR = Object.fromEntries(FACES.map(f => [ f.name, [f.x, f.y, f.z] ]));
@@ -452,7 +451,7 @@ function rotatePiecesPermanently(pieces, axis, angle) {
 		vector.forEach((v, i) => p[AXIS[i]] = v);
 		p.e.style = "--x:"+p.x+"em;--y:"+p.y+"em;--z:"+p.z+"em";
 		let stickers = Object.fromEntries(Array.from(p.e.getElementsByClassName("sticker")).map(sticker => [sticker.parentElement.classList[1], sticker]));
-		p.e.childNodes.forEach(face => { let s = stickers[swap[face.classList[1]]]; if (s) face.append(s); });
+		p.e.childNodes.forEach(face => { let f = face.classList[1], s = swap[f]!=f ? stickers[swap[f]] : null; s && face.append(s); });
 	});
 }
 
@@ -465,7 +464,10 @@ function rotatePiecesAnimated(pieces, axis, fromAngle, toAngle, duration, ease) 
 		if (progress < 1) {
 			rotatePiecesTemporarily(pieces, axis, fromAngle + (toAngle-fromAngle) * ease(progress));
 			animation.id = requestAnimationFrame(frame);
-		} else finishAnimation();
+		} else {
+			finishAnimation();
+			if (navigator.vibrate) navigator.vibrate(10);
+		}
 	}
 	animation = { id:requestAnimationFrame(frame), pieces:pieces, axis:axis, toAngle:toAngle };
 }
