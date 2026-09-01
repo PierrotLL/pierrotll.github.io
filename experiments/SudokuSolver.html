@@ -1,8 +1,9 @@
 <!DOCTYPE html>
-<meta name="viewport" content="width=device-width,initial-scale=1.0,minimum-scale=0.5,maximum-scale=5.0" />
+<meta name="viewport" content="width=450,minimum-scale=0.5,maximum-scale=5.0" />
 <style>
 body { width: max-content; margin: auto }
 .grid {
+	position: relative;
 	width: fit-content;
 	display: grid;
 	grid-template-columns: repeat(9, 1fr);
@@ -10,15 +11,15 @@ body { width: max-content; margin: auto }
 .cell {
 	position: relative;
 	box-sizing: border-box;
-	border: solid 3px lightgray;
-	border-style: none solid solid none;
+	border-right: solid 1px lightgray;
+	border-bottom: solid 1px lightgray;
 	width: 50px;
 	aspect-ratio: 1;
 }
-.cell:nth-child(-n+9) { border-top-style: solid;  border-top-color: darkgray;}
-.cell:nth-child(9n+1) { border-left-style: solid;  border-left-color: darkgray;}
-.cell:nth-child(3n) { border-right-color: darkgray; }
-.cell:nth-child(n+19):nth-child(-n+27), .cell:nth-child(n+46):nth-child(-n+54), .cell:nth-child(n+73) { border-bottom-color: darkgray; }
+.cell:nth-child(-n+9) { border-top: solid 2px dimgray; }
+.cell:nth-child(9n+1) { border-left: solid 2px dimgray; }
+.cell:nth-child(3n) { border-right: solid 2px dimgray; }
+.cell:nth-child(n+19):nth-child(-n+27), .cell:nth-child(n+46):nth-child(-n+54), .cell:nth-child(n+73) { border-bottom: solid 2px dimgray; }
 .cell * {
 	width: 100%;
 	height: 100%;
@@ -38,78 +39,91 @@ body { width: max-content; margin: auto }
 	grid-template-columns: repeat(3, 1fr);
 	z-index: -1;
 }
-.candidates * { font-size: 13px; visibility: hidden; }
+.candidates * { font-size: 13px; color: transparent; }
 
-p input, select, button { padding: 8px 16px; }
+.cols, .rows, .boxs { pointer-events: none; position: absolute; width: 100%; height: 100%; display: grid; }
+.cols { grid-template-columns: repeat(9, 1fr); }
+.rows { grid-template-columns: repeat(1, 1fr); }
+.boxs { grid-template-columns: repeat(3, 1fr); }
+.highlight { box-shadow: inset 0 0 3px 2px DeepSkyBlue; }
+.highlight.set { box-shadow: inset 0 0 3px 2px Lime; }
+.highlight.remove:not(.set) { box-shadow: inset 0 0 3px 2px Salmon; }
+
 option:checked { font-weight: bold; }
+p input, select, button { padding: .5em 1em; }
+p { display: flex; gap: .5em; }
+p input, p textarea { flex-grow: 1; }
+textarea { height: 10em; resize: vertical; }
 </style>
 
 <p>
-<select onchange="setGrid(strToGrid(this.value), true)">
-	<option value="000000000000000000000000000000000000000000000000000000000000000000000000000000000">Empty</option>
-	<option value="050703060007000800000816000000030000005000100730040086906000204840572093000409000">Easy 1.2</option>
-	<option value="302401809001000300000000000040708010780502036000090000200609003900000008800070005">Easy 1.2</option>
-	<option value="000823001003000400070000052300960010000102000010038006830000040002000900600789000">Easy 1.2</option>
-	<option value="802600009000058000006000401090406005020000040600203090205000900000970000100002804">Medium 1.7</option>
-	<option value="100800570000009210090040000300900050007000300020006008000020040071400000064007003">Medium 2.0</option>
-	<option value="020900000048000031000063020009407003003080200400105600030570000250000180000006050">Medium 2.3</option>
-	<option value="600050007030000000080409200015300000008000300000007590009501030000000080200070004">Hard 2.6</option>
-	<option value="080200400570000100002300000820090005000715000700020041000006700003000018007009050">Hard 3.4</option>
-	<option value="210950004090060037000700000000000308920000015805000000000002000680010040100047096">Hard 4.3</option>
-	<option value="000000000560000032230040079000060000070501090000708000053000920009806500700000004">Diabolical 6.6</option>
-	<option value="083020090000800100029300008000098700070000060006740000300006980002005000010030540">Diabolical 7.2</option>
-	<option value="006000200900000004243000896000591000002080300400203001300000007000907000010408020">Diabolical 8.2</option>
-	<option value="700040006000759000900801003000524000030000020400000007501000208080000010209000304">Diabolical 8.9</option>
-	<option value="006401500300509001000030000205000703030040020670000058060907080000050000002304900">Diabolical 9.1</option>
-	<option value="800000000003600000070090200050007000000045700000100030001000068008500010090000400" selected>Arto Inkala's Hardest</option>
-</select>
-<input type=text oninput="setGrid(strToGrid(this.value), true)" onkeydown="setGrid(strToGrid(this.value), true)" />
+	<select onchange="text.value=this.value; setGrid(grid, this.value, true)">
+		<option value="000000000000000000000000000000000000000000000000000000000000000000000000000000000">Empty</option>
+		<option value="050703060007000800000816000000030000005000100730040086906000204840572093000409000">Easy 1.2</option>
+		<option value="302401809001000300000000000040708010780502036000090000200609003900000008800070005">Easy 1.2</option>
+		<option value="000823001003000400070000052300960010000102000010038006830000040002000900600789000">Easy 1.2</option>
+		<option value="802600009000058000006000401090406005020000040600203090205000900000970000100002804">Medium 1.7</option>
+		<option value="100800570000009210090040000300900050007000300020006008000020040071400000064007003">Medium 2.0</option>
+		<option value="020900000048000031000063020009407003003080200400105600030570000250000180000006050">Medium 2.3</option>
+		<option value="600050007030000000080409200015300000008000300000007590009501030000000080200070004">Hard 2.6</option>
+		<option value="080200400570000100002300000820090005000715000700020041000006700003000018007009050">Hard 3.4</option>
+		<option value="210950004090060037000700000000000308920000015805000000000002000680010040100047096">Hard 4.3</option>
+		<option value="000000000560000032230040079000060000070501090000708000053000920009806500700000004">Diabolical 6.6</option>
+		<option value="083020090000800100029300008000098700070000060006740000300006980002005000010030540">Diabolical 7.2</option>
+		<option value="006000200900000004243000896000591000002080300400203001300000007000907000010408020">Diabolical 8.2</option>
+		<option value="700040006000759000900801003000524000030000020400000007501000208080000010209000304">Diabolical 8.9</option>
+		<option value="006401500300509001000030000205000703030040020670000058060907080000050000002304900">Diabolical 9.1</option>
+		<option value="800000000003600000070090200050007000000045700000100030001000068008500010090000400" selected>Arto Inkala's Hardest</option>
+	</select>
+	<input id=text type=text oninput="setGrid(grid, this.value, true)" onkeydown="this.oninput()" />
 </p>
-<div class=grid></div>
+<div id=grid></div>
 <p>
-<button id=solveButton>Solve</button>
-<button id=stepButton>Step</button>
-<button id=backButton disabled> &lt;&lt; </button>
-<input type=text id=solveDuration readonly placeholder="Solve duration"/>
+	<button id=solveButton>Solve</button>
+	<button id=stepButton>Step</button>
+	<button id=backButton disabled> &lt;&lt; </button>
+	<input type=text id=solveDuration readonly placeholder="Solve duration"/>
+</p>
+<p>
+	<textarea id=log autocomplete="off" readonly></textarea>
 </p>
 <div id=template hidden>
 	<div class=cell>
-		<input type=text maxLength=1 placeholder="" autocomplete="off" />
+		<input type=text maxLength=1 placeholder="" autocomplete="off" oninput="setGrid(grid, text.value=readGrid(grid))" />
 		<div class=candidates></div>
 	</div>
 </div>
 
 <script>
-let grid = document.querySelector(".grid");
-let cell = template.querySelector(".cell");
-for (let i=0 ; i<9 ; i++) cell.querySelector(".candidates").innerHTML += "<div>"+(i+1)+"</div>";
-for (let i=0 ; i<9*9 ; i++) grid.append(cell.cloneNode(true));
 
 class SudokuSolver {
-	constructor(grid) {
+	constructor(grid, logs) {
 		this.OK = 0;
 		this.ERROR = 1;
 		this.strategies = [
-			"nakedSingle",
-			"hiddenSingle",
-			"nakedPair",
-			"hiddenPair",
-			//"nakedTriplet",
-			//"hiddenTriplet",
-			//"nakedQuad",
-			//"hiddenQuad",
-			"intersectionRemoval",
-			"XWing",
-			"backtracking"
+			this.nakedSingle,
+			this.hiddenSingle,
+			this.nakedPair,
+			this.hiddenPair,
+			//this.nakedTriplet,
+			//this.hiddenTriplet,
+			//this.nakedQuad,
+			//this.hiddenQuad,
+			this.intersectionRemoval,
+			this.XWing,
+			this.backtracking
 		];
+		if (logs) { this.logs = []; this.prevStates = [] }
 		if (grid) this.init(grid);
 	}
 	
 	init(grid) {
-		//this.logs = [];
+		if (this.logs) this.logs.length = this.prevStates.length = 0;
+		this.log("init");
+		this.steps = 0;
 		this.stack = [];
-		this.grid = grid.concat();
-		this.sqrt = Math.floor(Math.sqrt(Math.sqrt(grid.length)));
+		this.grid = (typeof(grid)=="string" || grid instanceof String ? grid.split("") : grid.concat()).map(n=>Number(n)||0);
+		this.sqrt = Math.round(Math.sqrt(Math.sqrt(grid.length)));
 		this.width = this.sqrt * this.sqrt;
 		this.length = this.width * this.width;
 		this.housesCells = {row:[], col:[], box:[]};
@@ -163,23 +177,75 @@ class SudokuSolver {
 		}
 	}
 	
+/********/
+/* CORE */
+/********/
+	
+	step() {
+		if (this.emptyCells == 0) return;
+		this.prevStates && this.prevStates.push(this.getCurrentState(true));
+		this.steps++;
+		let logsLengthBefore;
+		if (this.logs) {
+			logsLengthBefore = this.logs.length;
+			console.log("[Step "+this.steps+"] Before:", structuredClone(this.candidates));
+		}
+		
+		let response;
+		for (let i in this.strategies) {
+			response = this.strategies[i].apply(this);
+			if (response !== undefined) break;
+		}
+		if (response == this.ERROR) response = this.onError();
+		
+		if (this.logs) {
+			console.log(this.logs.slice(logsLengthBefore).join("\r\n"));
+			console.log("[Step "+this.steps+"] After:", structuredClone(this.candidates));
+		}
+		return response;
+	}
+	
+	solve() {
+		let response = this.OK;
+		while (this.emptyCells && response == this.OK) response = this.step();
+	}
+	
+	findAllSolutions(max = 10) {
+		let solutions = [];
+		while (this.emptyCells && solutions.length < max) {
+			this.solve();
+			if (this.emptyCells == 0) {
+				solutions.push(this.grid.concat());
+				this.onError();
+			}
+		} 
+		return solutions;
+	}
+	
+/***********/
+/* METHODS */
+/***********/
+	
 	log(str) {
 		this.logs && this.logs.push(str);
 	}
 	
-	getCurrentState() {
-		return {
-			grid: this.grid.slice(),
-			candidates: structuredClone(this.candidates),
-			emptyCells: this.emptyCells
-		};
+	getCurrentState(full) {
+		return Object.assign({
+			emptyCells: this.emptyCells,
+			grid: this.grid.concat(),
+			candidates: structuredClone(this.candidates)
+		}, full ? {
+			steps: this.steps,
+			logs: this.logs && this.logs.concat()
+		} : null);
 	}
 	setCurrentState(o) {
 		for (let k in o) this[k] = o[k];
 	}
 	
 	fewerCandidates() {
-		let min = this.width, minCell;
+		let min = this.width, minCell=0;
 		for (let cell in this.candidates.cells) {
 			let candidates = this.candidates.cells[cell].values.length;
 			if (candidates < min) {
@@ -194,7 +260,7 @@ class SudokuSolver {
 		if (this.candidates.cells[cell]) {
 			let index = this.candidates.cells[cell].values.indexOf(Number(value));
 			if (index >= 0) {
-				this.logs && this.log("removeCandidate: cell="+cell+" value="+value);
+				this.logs && this.log("-removeCandidate: cell["+cell+"] value="+value);
 				this.candidates.cells[cell].values.splice(index, 1);
 				if (this.candidates.cells[cell].values.length == 0) return this.ERROR;
 				for (let houseType in this.candidates.cells[cell].houses) {
@@ -207,7 +273,7 @@ class SudokuSolver {
 	}
 	
 	setValue(cell, value) {
-		this.logs && this.log("setValue: cell="+cell+" value="+value);
+		this.logs && this.log("-setValue: cell["+cell+"] value="+value);
 		this.grid[cell] = value;
 		this.emptyCells--;
 		for (let i = this.candidates.cells[cell].values.length-1 ; i>=0 ; i--) {
@@ -225,15 +291,15 @@ class SudokuSolver {
 		return this.OK;
 	}
 	
-/***********/
-/* METHODS */
-/***********/
+/**************/
+/* STRATEGIES */
+/**************/
 	
 	/* cell has only one candidate => set cell value */
 	nakedSingle() {
 		for (let cell in this.candidates.cells) {
 			if (this.candidates.cells[cell].values.length == 1) {
-				this.logs && this.log("nakedSingle: cell="+cell);
+				this.logs && this.log("nakedSingle: cell["+cell+"]");
 				return this.setValue(cell, this.candidates.cells[cell].values[0]);
 			}
 		}
@@ -245,8 +311,8 @@ class SudokuSolver {
 			for (let id in this.candidates.houses[houseType]) {
 				for (let value in this.candidates.houses[houseType][id]) {
 					if (this.candidates.houses[houseType][id][value].length == 1) {
-						this.logs && this.log("hiddenSingle: cell="+this.candidates.houses[houseType][id][value][0]);
-						return this.setValue(this.candidates.houses[houseType][id][value][0], value);
+						this.logs && this.log("hiddenSingle: "+houseType+"["+id+"] cell["+this.candidates.houses[houseType][id][value][0]+"]");
+						return this.setValue(this.candidates.houses[houseType][id][value][0], Number(value));
 					}
 				}
 			}
@@ -268,7 +334,7 @@ class SudokuSolver {
 							this.candidates.subsets[houseType][cell] = true;
 							this.candidates.subsets[houseType][cell2] = true;
 							if (house[values[0]].length > 2 || house[values[1]].length > 2) {
-								this.logs && this.log("nakedPair: "+houseType+" cells="+cell+","+cell2+" values="+values);
+								this.logs && this.log("nakedPair: "+houseType+"["+this.candidates.houses[houseType].indexOf(house)+"] cells["+cell+","+cell2+"] values="+values);
 								for (let value of values) {
 									let length = house[value].length;
 									if (length > 2) { // if something to remove
@@ -322,12 +388,12 @@ class SudokuSolver {
 								if (max > n) break;
 							}
 							if (max > n) {
-								this.logs && this.log("nakedSubset: houseType="+houseType+"["+id+"] values="+candidates);
+								this.logs && this.log("nakedSubset: "+houseType+"["+id+"] values="+candidates);
 								cells = cells.filter((n,i) => selection.includes(i));
 								for (let value of candidates) {
 									for (let i = this.candidates.houses[houseType][id][value].length-1 ; i>=0 ; i--) {
 										if (!cells.includes(this.candidates.houses[houseType][id][value][i])) {
-											if (this.removeCandidate(this.candidates.houses[houseType][id][value][i], value)==this.ERROR) return this.ERROR;
+											if (this.removeCandidate(this.candidates.houses[houseType][id][value][i], value) == this.ERROR) return this.ERROR;
 										}
 									}
 								}
@@ -361,7 +427,7 @@ class SudokuSolver {
 						for (let value2=Number(value1)+1 ; value2<=this.width ; value2++) {
 							let cells2 = this.candidates.houses[houseType][id][value2];
 							if (cells2 && cells2.length == 2 && cells[0]==cells2[0] && cells[1]==cells2[1]) {
-								this.logs && this.log("hiddenPair: "+houseType+" cells="+cells+" values="+value1+","+value2);
+								this.logs && this.log("hiddenPair: "+houseType+"["+id+"] cells["+cells+"] values="+value1+","+value2);
 								for (let cell of cells) {
 									let values = this.candidates.cells[cell].values;
 									for (let i=values.length-1 ; i>=0 ; i--) {
@@ -400,7 +466,7 @@ class SudokuSolver {
 						for (let cell in hiddenCells) {
 							for (let i = this.candidates.cells[cell].values.length-1 ; i>=0 ; i--) {
 								let v = this.candidates.cells[cell].values[i];
-								if (!lockedValues.includes(v) && this.removeCandidate(cell, v)==this.ERROR) return this.ERROR;
+								if (!lockedValues.includes(v) && this.removeCandidate(cell, v) == this.ERROR) return this.ERROR;
 							}
 							this.candidates.subsets[houseType][cell] = true;
 						}
@@ -430,7 +496,7 @@ class SudokuSolver {
 							if (this.candidates.cells[cell].houses[crossHouseType] != crossHouse) { sameCrossHouse = false; break; }
 						}
 						if (sameCrossHouse) {
-							this.logs && this.log("intersectionRemoval: "+houseType+"["+id+"] x "+crossHouseType+"["+this.candidates.houses[crossHouseType].indexOf(crossHouse)+"] value="+value);
+							this.logs && this.log("intersectionRemoval: "+houseType+"["+id+"] x "+crossHouseType+"["+this.candidates.houses[crossHouseType].indexOf(crossHouse)+"] cells["+this.candidates.houses[houseType][id][value]+"] value="+value);
 							for (let i=crossHouse[value].length-1 ; i>=0 ; i--) {
 								let cell = crossHouse[value][i];
 								if (this.candidates.cells[cell].houses[houseType] != this.candidates.houses[houseType][id]) {
@@ -464,13 +530,13 @@ class SudokuSolver {
 									this.candidates.cells[line2[value][0]].houses[crossLineType] == crossLine1 &&
 									this.candidates.cells[line2[value][1]].houses[crossLineType] == crossLine2) {
 									
-									this.logs && this.log("X-Wing: "+houseType+"="+id+","+this.candidates.houses[houseType].indexOf(line2)+" value="+value);
+									this.logs && this.log("X-Wing: "+houseType+"["+id+"] // "+houseType+"["+this.candidates.houses[houseType].indexOf(line2)+"] value="+value);
 									for (let cell of line1[value]) {
 										for (let i=this.candidates.cells[cell].houses[crossLineType][value].length-1 ; i>=0 ; i--) {
 											let cell2 = this.candidates.cells[cell].houses[crossLineType][value][i];
 											if (this.candidates.cells[cell2].houses[houseType] != line1 &&
 												this.candidates.cells[cell2].houses[houseType] != line2 &&
-												this.removeCandidate(cell2, value)==this.ERROR)
+												this.removeCandidate(cell2, value) == this.ERROR)
 													return this.ERROR;
 										}
 									}
@@ -487,64 +553,21 @@ class SudokuSolver {
 	/* try first candidate of the cell with fewer candidates */
 	backtracking() {
 		let cell = this.fewerCandidates(), value = this.candidates.cells[cell].values[0];
-		this.logs && this.log("try: cell="+cell+" val="+value);
+		this.logs && this.log("try: cell["+cell+"] value="+value);
 		this.stack.push(this.getCurrentState());
 		return this.setValue(cell, value);
 	}
 	
 	onError() {
-		let state = this.ERROR;
-		while (state == this.ERROR && this.stack.length) {
-			this.logs && this.log("try rewind");
+		let response = this.ERROR;
+		while (response == this.ERROR && this.stack.length) {
+			this.logs && this.log("backtracking");
 			this.setCurrentState(this.stack.pop());
 			let cell = this.fewerCandidates(), value = this.candidates.cells[cell].values[0];
-			state = this.OK;
-			if (this.removeCandidate(cell, value)==this.ERROR) state = this.ERROR;
+			response = this.OK;
+			if (this.removeCandidate(cell, value) == this.ERROR) response = this.ERROR;
 		}
-		return state;
-	}
-	
-	step() {
-		if (this.logs) {
-			console.log("Before:", structuredClone(this.candidates));
-			this.states ||= [];
-			this.states.push(this.getCurrentState());
-		}
-		
-		if (!this.emptyCells) return this.OK;
-		let state;
-		for (let i in this.strategies) {
-			state = this[this.strategies[i]]();
-			if (state !== undefined) break;
-		}
-		if (state == this.ERROR) state = this.onError();
-		
-		if (this.logs) {
-			setGrid(this.grid);
-			showCandidates(this.candidates.cells);
-			console.log(structuredClone(this.logs));
-			this.logs.length = 0;
-			console.log("After:", structuredClone(this.candidates));
-		}
-		return state;
-	}
-	
-	solve() {
-		let state;
-		do state = this.step();
-		while (this.emptyCells && state == this.OK);
-	}
-	
-	findAllSolutions(max = 10) {
-		let solutions = [];
-		do {
-			if (this.stack.length) this.onError();
-			this.solve();
-			if (this.emptyCells == 0) {
-				solutions.push(this.grid.concat());
-			}
-		} while (!this.emptyCells && this.stack.length && solutions.length < max)
-		return solutions;
+		return response;
 	}
 }
 
@@ -560,62 +583,117 @@ let GRIDS = [
 "000030086000020040090078520371856294900142375400397618200703859039205467700904132", // NakedQuad
 ];
 
-function readGrid() {
-	return Array.from(document.querySelectorAll(".grid .cell input")).map(cell => cell.value);
-}
-function setGrid(grid, readonly) {
-	Array.from(document.querySelectorAll(".grid .cell input")).forEach((cell, i) => cell.value = grid[i] || "");
-	if (readonly) Array.from(document.querySelectorAll(".grid .cell input")).forEach((cell, i) => grid[i] ? cell.setAttribute("disabled","") : cell.removeAttribute("disabled"));
-	solveDuration.value = "";
-}
-function showCandidates(cells) {
-	Array.from(document.querySelectorAll(".grid .cell")).forEach((div, cell) => {
-		Array.from(div.querySelectorAll(".candidates div")).forEach((div, i) => {
-			div.style.visibility = cells[cell] && cells[cell].values.includes(i+1) ? "visible" : "hidden";
-		});
-	});
-}
-function gridToStr(array) {
-	return array.map(n=>parseInt(n)||0).join("");
-}
-function strToGrid(str) {
-	return str.split("").map(n=>parseInt(n));
+function buildGrid(container, dim=9) {
+	container.innerHTML = "";
+	container.classList.add("grid");
+	
+	let cell = template.querySelector(".cell");
+	cell.querySelector(".candidates").innerHTML = Array(9).fill(0).map((_,i)=>"<div>"+(i+1)+"</div>").join("");
+	for (let i=0 ; i<dim*dim ; i++) container.append(cell.cloneNode(true));
+
+	["rows","cols","boxs"].forEach(c => container.innerHTML += "<div class="+c+"></div>");
+	container.querySelectorAll(".rows, .cols, .boxs").forEach(d=>d.innerHTML += "<div></div>".repeat(dim));
 }
 
-setGrid(strToGrid(document.querySelector("select").value), true);
+function readGrid(container) {
+	return Array.from(container.querySelectorAll(".cell input")).map(cell => Number(cell.value)||0).join("");
+}
+function setGrid(container, data, readonly) {
+	data = data.split("").map(Number);
+	
+	let cells = container.querySelectorAll(".cell input");
+	cells.forEach((cell, i) => cell.value = data[i] || "");
+	if (readonly) cells.forEach((cell, i) => data[i] ? cell.setAttribute("disabled","") : cell.removeAttribute("disabled"));
+	
+	if (container == grid) {
+		solver = null;
+		console.clear();
+		solveButton.removeAttribute("disabled");
+		stepButton.removeAttribute("disabled");
+		backButton.setAttribute("disabled", "");
+		solveDuration.value = log.value = "";
+		container.querySelectorAll(".candidates div").forEach(div => div.style.color = "transparent");
+	}
+}
+function updateGrid(container, grid, candidates, logs) {
+	let cells = container.querySelectorAll(".cell");
+	if (grid) {
+		cells.forEach((cell, i) => cell.getElementsByTagName("input")[0].value = grid[i] || "");
+	}
+	if (candidates) {
+		cells.forEach((div, cell) => {
+			div.querySelectorAll(".candidates div").forEach((div, i) => {
+				div.style.color = candidates[cell] && candidates[cell].values.includes(i+1) ? "inherit" : "";
+			});
+		});
+	}
+	if (logs) {
+		container.querySelectorAll(".highlight").forEach(cell => cell.classList.remove("highlight", "set", "remove"));
+		logs.slice(0,1)
+			.map(line => line.match(/(row|col|box)\[\d+\]/g))
+			.map(matches => matches && matches.map(house=>house.match(/(\w+)\[(\d+)\]/)))
+			.forEach(houses => houses && houses.forEach(house=>container.getElementsByClassName(house[1]+"s")[0].children[house[2]].classList.add("highlight")));
+		
+		logs.map(line => line.match(/(\w+):.*(?: cells?\[([\d,]+)\])(?: values?=([\d,]+))?/))
+			.forEach(match => {
+				if (match) {
+					let [,action,cellIds,values] = match;
+					cellIds = cellIds.split(",");
+					values = values && values.split(",");
+					switch (action) {
+						case "setValue": cells[cellIds[0]].querySelectorAll(".candidates div")[values[0]-1].classList.add("highlight", "set"); break;
+						case "removeCandidate": cells[cellIds[0]].querySelectorAll(".candidates div")[values[0]-1].classList.add("highlight", "remove"); break;
+						default:
+							cellIds.forEach(i => cells[i].classList.add("highlight"));
+							if (values) cellIds.forEach(i => values.forEach(value => cells[i].querySelectorAll(".candidates div")[value-1].classList.add("highlight")));
+							break;
+					}
+				}
+			});
+	}
+}
+
+buildGrid(grid, 9);
+setGrid(grid, document.querySelector("select").value, true);
 solveButton.onclick = function() {
-	window.solver = new SudokuSolver(readGrid());
+	solver ||= new SudokuSolver(readGrid(grid));
 	let start = performance.now();
 	solver.solve();
 	let duration = performance.now() - start;
-	setGrid(solver.grid);
-	showCandidates(solver.candidates.cells);
-	backButton.removeAttribute("disabled");
-	solveDuration.value = "Solve duration: "+duration+"ms";
-};
+	
+	updateGrid(grid, solver.grid, solver.candidates.cells);
+	solveButton.setAttribute("disabled", "");
+	stepButton.setAttribute("disabled", "");
+	if (solver.prevStates) backButton.removeAttribute("disabled");
+	log.value = solver.logs ? solver.logs.filter(line => line.charAt(0) != "-").join("\r\n") : "";
+	if (!solver.logs) solveDuration.value = "Solving duration: "+duration+"ms";
+}
 stepButton.onclick = function() {
-	window.solver ||= new SudokuSolver(readGrid());
-	/*solver.logs = null;
-	benchmark({
-		nakedpair: _=>solver.nakedPair(),
-		nakedpair2: _=>solver.nakedPair2(),
-		nakedtriplet: _=>solver.nakedTriplet(),
-		hiddenpair: _=>solver.hiddenPair(),
-		intersection: _=>solver.intersectionRemoval(),
-	}, 1000, 10);*/
-	setGrid(solver.grid);
-	showCandidates(solver.candidates.cells);
-	if (solver.step() == solver.ERROR) stepButton.setAttribute("disabled", "");
-	backButton.removeAttribute("disabled");
-};
-backButton.onclick = function() {
-	if (window.solver && solver.states && solver.states.length) {
-		solver.setCurrentState(solver.states.pop());
-		setGrid(solver.grid);
-		showCandidates(solver.candidates.cells);
-		if (!solver.states.length) backButton.setAttribute("disabled", "");
+	if (!solver) {
+		solver = new SudokuSolver(readGrid(grid), true);
+		updateGrid(grid, solver.grid, solver.candidates.cells);
+		log.value = solver.logs;
+	} else {
+		let prevState = solver.getCurrentState(true);
+		let response = solver.emptyCells ? solver.step() : solver.OK;
+		updateGrid(grid, prevState.grid, prevState.candidates.cells, solver.logs.slice(prevState.logs.length));
+		log.value = solver.logs.slice(prevState.logs.length).join("\r\n");
+		if (response == solver.ERROR || prevState.emptyCells == 0) stepButton.setAttribute("disabled", "");
+		backButton.removeAttribute("disabled");
 	}
-};
+}
+backButton.onclick = function() {
+	if (solver && solver.prevStates && solver.prevStates.length) {
+		solver.setCurrentState(solver.prevStates.pop());
+		let prevState = solver.prevStates.length ? solver.prevStates[solver.prevStates.length-1] : null;
+		updateGrid(grid, prevState && prevState.grid, prevState && prevState.candidates.cells, prevState ? solver.logs.slice(prevState.logs.length) : solver.logs);
+		log.value = (prevState ? solver.logs.slice(prevState.logs.length) : solver.logs).join("\r\n");
+		
+		solveButton.removeAttribute("disabled");
+		stepButton.removeAttribute("disabled");
+		if (!solver.prevStates.length) backButton.setAttribute("disabled", "");
+	}
+}
 
 function benchmark(functions, iterations = 1, iterationsTotal = 1) {
 	let times = {}, i = iterationsTotal, name;
