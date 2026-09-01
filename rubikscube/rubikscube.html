@@ -3,7 +3,7 @@
 <link rel="icon" type="image/png" href="icon-64.webp" />
 <link rel="apple-touch-icon" href="icon-512.png">
 <meta name="description" content="Play Rubik's Cube in your browser" />
-<meta name="viewport" content="width=device-width,initial-scale=1.0,minimum-scale=1.0,maximum-scale=1.0,user-scalable=no,interactive-widget=resizes-content" />
+<meta name="viewport" content="width=device-width,user-scalable=no,interactive-widget=overlays-content" />
 
 <link rel="manifest" href="rubikscube.webmanifest" />
 <script>if (navigator.serviceWorker) navigator.serviceWorker.register("rubikscube-sw.js");</script>
@@ -11,9 +11,10 @@
 <script src=" https://cdn.jsdelivr.net/npm/@easy-pwa/beforeinstallprompt-polyfill@1.0.0-BETA1/dist/beforeinstallprompt-polyfill.min.js "></script>
 
 <style>
-html, body {
+html { height: 100% }
+body {
 	margin: 0;
-	height: 100%;
+	min-height: 100%;
 	position: relative; /* helpButton position */
 	background: #000;
 	font: 16px sans-serif;
