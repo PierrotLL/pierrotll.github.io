@@ -67,16 +67,15 @@ app:active:not(.open) {
 }
 app > :first-child {
 	display: block;
-	width: 100%;
 	aspect-ratio: 1;
 	border-radius: 25%;
 	overflow: hidden;
 }
+maskable img { scale: 1.2 }
 img {
 	background: lightgray;
 	width: 100%;
 }
-.maskable { scale: 1.2 }
 name {
 	display: block;
 	position: relative;
@@ -159,7 +158,7 @@ app.open {
 				<name>Peg-Solitaire</name>
 			</app>
 			<app href="./rubikscube/rubikscube.html">
-				<div><img src="./rubikscube/icon-192.png" class=maskable /></div>
+				<maskable><img src="./rubikscube/icon-192.png"/></maskable>
 				<name>Rubik's Cube</name>
 			</app>
 			<app href="./piano/piano.html">
