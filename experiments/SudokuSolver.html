@@ -604,6 +604,8 @@ function setGrid(container, data, readonly) {
 	let cells = container.querySelectorAll(".cell input");
 	cells.forEach((cell, i) => cell.value = data[i] || "");
 	if (readonly) cells.forEach((cell, i) => data[i] ? cell.setAttribute("disabled","") : cell.removeAttribute("disabled"));
+	container.querySelectorAll(".candidates div").forEach(div => div.style.color = "transparent");
+	container.querySelectorAll(".highlight").forEach(cell => cell.classList.remove("highlight", "set", "remove"));
 	
 	if (container == grid) {
 		solver = null;
@@ -612,7 +614,6 @@ function setGrid(container, data, readonly) {
 		stepButton.removeAttribute("disabled");
 		backButton.setAttribute("disabled", "");
 		solveDuration.value = log.value = "";
-		container.querySelectorAll(".candidates div").forEach(div => div.style.color = "transparent");
 	}
 }
 function updateGrid(container, grid, candidates, logs) {
@@ -655,10 +656,12 @@ function updateGrid(container, grid, candidates, logs) {
 
 buildGrid(grid, 9);
 setGrid(grid, document.querySelector("select").value, true);
+let solved;
 solveButton.onclick = function() {
 	solver ||= new SudokuSolver(readGrid(grid));
 	let start = performance.now();
 	solver.solve();
+	solved = true;
 	let duration = performance.now() - start;
 	
 	updateGrid(grid, solver.grid, solver.candidates.cells);
@@ -674,17 +677,19 @@ stepButton.onclick = function() {
 		updateGrid(grid, solver.grid, solver.candidates.cells);
 		log.value = solver.logs;
 	} else {
+		solved = solver.emptyCells == 0;
 		let prevState = solver.getCurrentState(true);
-		let response = solver.emptyCells ? solver.step() : solver.OK;
+		let response = solved ? solver.OK : solver.step();
 		updateGrid(grid, prevState.grid, prevState.candidates.cells, solver.logs.slice(prevState.logs.length));
-		log.value = solver.logs.slice(prevState.logs.length).join("\r\n");
-		if (response == solver.ERROR || prevState.emptyCells == 0) stepButton.setAttribute("disabled", "");
+		log.value = (solved ? solver.logs.filter(line => line.charAt(0) != "-") : solver.logs.slice(prevState.logs.length)).join("\r\n");
+		if (response == solver.ERROR || solved) stepButton.setAttribute("disabled", "");
 		backButton.removeAttribute("disabled");
 	}
 }
 backButton.onclick = function() {
 	if (solver && solver.prevStates && solver.prevStates.length) {
-		solver.setCurrentState(solver.prevStates.pop());
+		if (!solved) solver.setCurrentState(solver.prevStates.pop());
+		else solved = false;
 		let prevState = solver.prevStates.length ? solver.prevStates[solver.prevStates.length-1] : null;
 		updateGrid(grid, prevState && prevState.grid, prevState && prevState.candidates.cells, prevState ? solver.logs.slice(prevState.logs.length) : solver.logs);
 		log.value = (prevState ? solver.logs.slice(prevState.logs.length) : solver.logs).join("\r\n");
