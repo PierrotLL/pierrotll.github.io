@@ -10,19 +10,32 @@ body {
 	position: relative;
 	width: fit-content;
 	display: grid;
-	grid-template-columns: repeat(9, auto);
+	--width: 9;
+	--box: 3;
+	--cell: 50px;
+	--line: 1px;
+	--border: 3px;
+	gap: var(--line);
+	padding: max(var(--border), var(--line));
+	grid-template-columns: repeat(var(--width), var(--cell));
+}
+.grid:after {
+	content: "";
+	position: absolute;
+	top:0;bottom:0;left:0;right:0;
+	z-index: 2;
+	pointer-events: none;
+	background:
+		repeating-linear-gradient(90deg, dimgray, dimgray var(--border), transparent var(--border), transparent calc((100% - max(var(--border), var(--line)))/var(--width)*var(--box))) max((var(--line) - var(--border))/2, 0px),
+		repeating-linear-gradient(dimgray, dimgray var(--border), transparent var(--border), transparent calc((100% - max(var(--border), var(--line)))/var(--box))) 0 max((var(--line) - var(--border))/2, 0px),
+		repeating-linear-gradient(90deg, lightgray, lightgray var(--line), transparent var(--line), transparent calc(var(--line) + var(--cell))) max(var(--border) - var(--line), 0px),
+		repeating-linear-gradient(lightgray, lightgray var(--line), transparent var(--line), transparent calc(var(--line) + var(--cell))) 0 max(var(--border) - var(--line), 0px);
 }
 .cell {
 	position: relative;
-	border-right: solid 1px lightgray;
-	border-bottom: solid 1px lightgray;
-	width: 50px;
 	aspect-ratio: 1;
+	width: var(--cell);
 }
-.cell:nth-child(-n+9) { border-top: solid 2px dimgray; }
-.cell:nth-child(9n+1) { border-left: solid 2px dimgray; }
-.cell:nth-child(3n) { border-right: solid 2px dimgray; }
-.cell:nth-child(n+19):nth-child(-n+27), .cell:nth-child(n+46):nth-child(-n+54), .cell:nth-child(n+73) { border-bottom: solid 2px dimgray; }
 .cell > * {
 	position: absolute;
 	width: 100%;
@@ -33,20 +46,30 @@ body {
 	text-align: center;
 	color: black;
 }
-.cell input { z-index: 1 }
+.cell input { z-index: 1; background: transparent; }
+.cell input:focus { z-index: 4; }
 .cell input[disabled] { background: #eee; }
-.cell input:placeholder-shown { background: transparent; }
+.cell input:placeholder-shown + .candidates { visibility: visible; }
 .candidates {
 	display: grid;
-	grid-template-columns: repeat(3, 1fr);
-	background: white;
+	grid-template-columns: repeat(var(--box), auto);
+	visibility: hidden;
 }
-.candidates * { font-size: 13px; color: transparent; }
+.candidates * { font-size: 13px; visibility: hidden; }
 
-.cols, .rows, .boxs { pointer-events: none; position: absolute; width: 100%; height: 100%; display: grid; z-index: 2; }
-.cols { grid-template-columns: repeat(9, 1fr); }
-.rows { grid-template-columns: repeat(1, 1fr); }
-.boxs { grid-template-columns: repeat(3, 1fr); }
+.cols, .rows, .boxs {
+	pointer-events: none;
+	position: absolute;
+	padding: inherit;
+	box-sizing: border-box;
+	width: 100%;
+	height: 100%;
+	display: grid;
+	z-index: 3;
+}
+.cols { grid-template-columns: repeat(var(--width), auto); }
+.rows { grid-template-columns: repeat(1, auto); }
+.boxs { grid-template-columns: repeat(calc(var(--width)/var(--box)), auto); }
 .highlight { box-shadow: inset 0 0 3px 2px DeepSkyBlue; }
 .highlight.set { box-shadow: inset 0 0 3px 2px Lime; }
 .highlight.remove:not(.set) { box-shadow: inset 0 0 3px 2px Salmon; }
@@ -76,6 +99,11 @@ textarea { height: 10em; resize: vertical; }
 		<option value="700040006000759000900801003000524000030000020400000007501000208080000010209000304">Diabolical 8.9</option>
 		<option value="006401500300509001000030000205000703030040020670000058060907080000050000002304900">Diabolical 9.1</option>
 		<option value="800000000003600000070090200050007000000045700000100030001000068008500010090000400" selected>Arto Inkala's Hardest</option>
+		<option value="0003040000320000">Hard 4x4</option>
+		<option value="030400005603000100010305064031001046">Easy 6x6</option>
+		<option value="005002600000400005500040001200000001">Hard 6x6</option>
+		<option value="00106020A7006205B0001000080000C3B062A97020600B5005000000037C3B000007000957B0400000018000000A090004009700060001C00000000B400000020C0000005C007126">Hard 12x12</option>
+		<option value="02035000D000C00B060002C008F340E000CE048B00G00000000B0000020A006G0E800040C0D0000100503F0090016E0CF000CB610E00A000001980000040GFB0007000000000000F20BD6E003070005A00004805000006D03AF810006G902B00E06F0C0800100A2000G00100F0000000000003DE2507F008B420F0A68C0D0105">Hard 16x16</option>
 	</select>
 	<input id=text type=text oninput="setGrid(grid, this.value, true)" onkeydown="this.oninput()" />
 </p>
@@ -91,13 +119,12 @@ textarea { height: 10em; resize: vertical; }
 </p>
 <div id=template hidden>
 	<div class=cell>
+		<input type=text placeholder="" autocomplete="off" oninput="setGrid(grid, text.value=readGrid(grid))" />
 		<div class=candidates></div>
-		<input type=text inputmode=numeric pattern="\d" maxLength=1 placeholder="" autocomplete="off" oninput="setGrid(grid, text.value=readGrid(grid))" />
 	</div>
 </div>
 
 <script>
-
 class SudokuSolver {
 	constructor(grid, logs) {
 		this.OK = 0;
@@ -121,9 +148,9 @@ class SudokuSolver {
 	
 	init(grid) {
 		if (this.logs) this.logs.length = 0;
-		this.log("init");
-		this.grid = (typeof(grid)=="string" || grid instanceof String ? grid.split("") : grid.concat()).map(n=>Number(n)||0);
-		this.width = Math.max(Math.round(Math.sqrt(this.grid.length)), 2);
+		this.log(" init");
+		this.grid = typeof(grid)=="string" || grid instanceof String ? grid.split("").map(i=>i=="0"?null:i) : grid instanceof Array ? grid.map(i=>i?i.toString(36).toUpperCase():null) : [];
+		this.width = Math.min(Math.max(Math.round(Math.sqrt(this.grid.length)), 2), 36);
 		this.boxWidth = (w=>{ let h=Math.floor(Math.sqrt(w)); while (Math.floor(w/h) != w/h) h--; return w/h; })(this.width);
 		this.length = this.grid.length = this.width * this.width;
 		this.housesCells = {row:[], col:[], box:[]};
@@ -167,7 +194,8 @@ class SudokuSolver {
 						box: this.candidates.houses.box[box] ||= {},
 					}
 				};
-				for (let value=1 ; value<=this.width ; value++) {
+				for (let i=1 ; i<=this.width ; i++) {
+					let value = i.toString(36).toUpperCase();
 					if (!values.row[row][value] && !values.col[col][value] && !values.box[box][value]) {
 						this.candidates.cells[cell].values.push(value);
 						for (let houseType in this.candidates.cells[cell].houses) {
@@ -191,7 +219,7 @@ class SudokuSolver {
 		let prevLogsLength;
 		if (this.logs) {
 			prevLogsLength = this.logs.length;
-			console.log("[Step "+this.steps+"] Before:", structuredClone(this.candidates));
+			console.log("Before #"+this.steps+":", this.getCurrentState(this.candidates));
 		}
 		
 		let response;
@@ -203,7 +231,7 @@ class SudokuSolver {
 		
 		if (this.logs) {
 			console.log(this.logs.slice(prevLogsLength).join("\r\n"));
-			console.log("[Step "+this.steps+"] After:", structuredClone(this.candidates));
+			console.log("After #"+this.steps+":", this.getCurrentState(this.candidates));
 		}
 		return response;
 	}
@@ -219,7 +247,7 @@ class SudokuSolver {
 		while (this.emptyCells && solutions.length < max) {
 			this.solve();
 			if (this.emptyCells == 0) {
-				solutions.push(this.grid.concat());
+				solutions.push(this.grid.join(""));
 				this.onError();
 			}
 		} 
@@ -231,7 +259,7 @@ class SudokuSolver {
 /***********/
 	
 	log(str) {
-		this.logs && this.logs.push(str);
+		this.logs && this.logs.push((str.charAt(0)!=" " ? "#"+this.steps+" ":"") + str);
 	}
 	
 	getCurrentState(full) {
@@ -241,7 +269,7 @@ class SudokuSolver {
 			candidates: structuredClone(this.candidates)
 		}, full ? {
 			steps: this.steps,
-			stack: this.stack.concat(),
+			stack: structuredClone(this.stack),
 			logs: this.logs && this.logs.concat()
 		} : null);
 	}
@@ -263,9 +291,9 @@ class SudokuSolver {
 	
 	removeCandidate(cell, value) {
 		if (this.candidates.cells[cell]) {
-			let index = this.candidates.cells[cell].values.indexOf(Number(value));
+			let index = this.candidates.cells[cell].values.indexOf(value);
 			if (index >= 0) {
-				this.logs && this.log("-removeCandidate: cell["+cell+"] value="+value);
+				this.logs && this.log(" removeCandidate: cell["+cell+"] value="+value);
 				this.candidates.cells[cell].values.splice(index, 1);
 				if (this.candidates.cells[cell].values.length == 0) return this.ERROR;
 				for (let houseType in this.candidates.cells[cell].houses) {
@@ -278,7 +306,7 @@ class SudokuSolver {
 	}
 	
 	setValue(cell, value) {
-		this.logs && this.log("-setValue: cell["+cell+"] value="+value);
+		this.logs && this.log(" setValue: cell["+cell+"] value="+value);
 		this.grid[cell] = value;
 		this.emptyCells--;
 		for (let i = this.candidates.cells[cell].values.length-1 ; i>=0 ; i--) {
@@ -317,7 +345,7 @@ class SudokuSolver {
 				for (let value in this.candidates.houses[houseType][id]) {
 					if (this.candidates.houses[houseType][id][value].length == 1) {
 						this.logs && this.log("hiddenSingle: "+houseType+"["+id+"] cell["+this.candidates.houses[houseType][id][value][0]+"]");
-						return this.setValue(this.candidates.houses[houseType][id][value][0], Number(value));
+						return this.setValue(this.candidates.houses[houseType][id][value][0], value);
 					}
 				}
 			}
@@ -393,7 +421,7 @@ class SudokuSolver {
 								if (max > n) break;
 							}
 							if (max > n) {
-								this.logs && this.log("nakedSubset: "+houseType+"["+id+"] values="+candidates);
+								this.logs && this.log("nakedSubset("+n+"): "+houseType+"["+id+"] values="+candidates);
 								cells = cells.filter((n,i) => selection.includes(i));
 								for (let value of candidates) {
 									for (let i = this.candidates.houses[houseType][id][value].length-1 ; i>=0 ; i--) {
@@ -429,7 +457,8 @@ class SudokuSolver {
 				for (let value1 in this.candidates.houses[houseType][id]) {
 					let cells = this.candidates.houses[houseType][id][value1];
 					if (!this.candidates.subsets[houseType][cells[0]] && cells.length == 2) {
-						for (let value2=Number(value1)+1 ; value2<=this.width ; value2++) {
+						for (let val=parseInt(value1, 36)+1 ; val<=this.width ; val++) {
+							let value2 = val.toString(36).toUpperCase();
 							let cells2 = this.candidates.houses[houseType][id][value2];
 							if (cells2 && cells2.length == 2 && cells[0]==cells2[0] && cells[1]==cells2[1]) {
 								this.logs && this.log("hiddenPair: "+houseType+"["+id+"] cells["+cells+"] values="+value1+","+value2);
@@ -461,7 +490,7 @@ class SudokuSolver {
 					let cells = this.candidates.houses[houseType][id][value];
 					if (cells.length <= n && !this.candidates.subsets[houseType][cells[0]]) {
 						lockedValues ||= [];
-						lockedValues.push(Number(value));
+						lockedValues.push(value);
 					}
 				}
 				if (lockedValues && lockedValues.length >= n) {
@@ -566,11 +595,10 @@ class SudokuSolver {
 	onError() {
 		let response = this.ERROR;
 		while (response == this.ERROR && this.stack.length) {
-			this.logs && this.log("backtracking");
 			this.setCurrentState(this.stack.pop());
 			let cell = this.fewerCandidates(), value = this.candidates.cells[cell].values[0];
-			response = this.OK;
-			if (this.removeCandidate(cell, value) == this.ERROR) response = this.ERROR;
+			this.logs && this.log("backtracking: cell["+cell+"] value="+value+" didn't work");
+			response = this.removeCandidate(cell, value);
 		}
 		return response;
 	}
@@ -591,77 +619,81 @@ let GRIDS = [
 function buildGrid(container, dim=9) {
 	container.innerHTML = "";
 	container.classList.add("grid");
+	container.style.setProperty("--width", dim);
+	container.style.setProperty("--box", (w=>{ let h=Math.floor(Math.sqrt(w)); while (Math.floor(w/h) != w/h) h--; return w/h; })(dim));
 	
 	let cell = template.querySelector(".cell");
-	cell.querySelector(".candidates").innerHTML = Array(9).fill(0).map((_,i)=>"<div>"+(i+1)+"</div>").join("");
+	cell.querySelector("input").setAttribute("inputmode", dim<10 ? "numeric" : "text");
+	cell.querySelector("input").setAttribute("maxLength", Math.ceil(Math.log10(dim+1)));
+	cell.querySelector(".candidates").innerHTML = Array(dim).fill(0).map((_,i)=>"<div>"+(i+1).toString(36).toUpperCase()+"</div>").join("");
 	
 	for (let i=0 ; i<dim*dim ; i++) container.append(cell.cloneNode(true));
 
 	["rows","cols","boxs"].forEach(c => container.innerHTML += "<div class="+c+"></div>");
 	container.querySelectorAll(".rows, .cols, .boxs").forEach(d=>d.innerHTML += "<div></div>".repeat(dim));
 }
-
 function readGrid(container) {
-	return Array.from(container.querySelectorAll(".cell input")).map(cell => Number(cell.value)||0).join("");
+	return Array.from(container.querySelectorAll(".cell input")).map(i=>i.value||0).join("");
 }
 function setGrid(container, data, readonly) {
-	data = data.split("").map(Number);
+	data = data.toUpperCase().split("").map(i=>i=="0"?"":i);
 	
+	if (container.style.getPropertyValue("--width") != Math.sqrt(data.length)) buildGrid(container, Math.sqrt(data.length));
 	let cells = container.querySelectorAll(".cell input");
 	cells.forEach((cell, i) => cell.value = data[i] || "");
 	if (readonly) cells.forEach((cell, i) => data[i] ? cell.setAttribute("disabled","") : cell.removeAttribute("disabled"));
-	container.querySelectorAll(".candidates div").forEach(div => div.style.color = "transparent");
+	container.querySelectorAll(".candidates div").forEach(div => div.style.visibility = "");
 	container.querySelectorAll(".highlight").forEach(cell => cell.classList.remove("highlight", "set", "remove"));
 	
 	if (container == grid) {
 		solver = null;
-		//console.clear();
+		console.clear();
 		solveButton.removeAttribute("disabled");
 		stepButton.removeAttribute("disabled");
 		backButton.setAttribute("disabled", "");
 		solveDuration.value = log.value = "";
 	}
 }
-function showSolverState(container, solver, prevState) {
+function showSolverState(container, solver, diff) {
 	let cells = container.querySelectorAll(".cell");
 	
-	let state = prevState ? solver.prevStates[solver.prevStates.length-1] : solver;
+	let state = diff && solver.prevStates && solver.prevStates.length ? solver.prevStates[solver.prevStates.length-1] : solver;
 	cells.forEach((cell, i) => cell.getElementsByTagName("input")[0].value = state.grid[i] || "");
 	
 	cells.forEach((div, cell) =>
 		div.querySelectorAll(".candidates div").forEach((div, i) =>
-			div.style.color = state.candidates.cells[cell] && state.candidates.cells[cell].values.includes(i+1) ? "inherit" : ""
+			div.style.visibility = state.candidates.cells[cell] && state.candidates.cells[cell].values.includes((i+1).toString(36).toUpperCase()) ? "visible" : ""
 		)
 	);
 	
 	let logs = solver.logs ? solver.logs.slice(state.logs.length) : [];
 	container.querySelectorAll(".highlight").forEach(cell => cell.classList.remove("highlight", "set", "remove"));
 	logs.slice(0,1)
-		.map(line => line.match(/(row|col|box)\[\d+\]/g))
-		.map(matches => matches && matches.map(house=>house.match(/(\w+)\[(\d+)\]/)))
+		.map(line => line.match(/(row|col|box)\[.+?\]/g))
+		.map(matches => matches && matches.map(house=>house.match(/(\w+)\[(.+?)\]/)))
 		.forEach(houses => houses && houses.forEach(house=>container.getElementsByClassName(house[1]+"s")[0].children[house[2]].classList.add("highlight")));
 	
-	logs.map(line => line.match(/(\w+):.*(?: cells?\[([\d,]+)\])(?: values?=([\d,]+))?/))
+	logs.map(line => line.match(/(\w+):.*(?: cells?\[(.+?)\])(?: values?=(\S+))?/))
 		.forEach(match => {
 			if (match) {
 				let [,action,cellIds,values] = match;
 				cellIds = cellIds.split(",");
 				values = values && values.split(",");
 				switch (action) {
-					case "setValue": cells[cellIds[0]].querySelectorAll(".candidates div")[values[0]-1].classList.add("highlight", "set"); break;
-					case "removeCandidate": cells[cellIds[0]].querySelectorAll(".candidates div")[values[0]-1].classList.add("highlight", "remove"); break;
+					case "setValue": cells[cellIds[0]].querySelectorAll(".candidates div")[parseInt(values[0],36)-1].classList.add("highlight", "set"); break;
+					case "removeCandidate": cells[cellIds[0]].querySelectorAll(".candidates div")[parseInt(values[0],36)-1].classList.add("highlight", "remove"); break;
+					case "backtracking": cells[cellIds[0]].classList.add("highlight", "remove"); break;
 					default:
 						cellIds.forEach(i => cells[i].classList.add("highlight"));
-						if (values) cellIds.forEach(i => values.forEach(value => cells[i].querySelectorAll(".candidates div")[value-1].classList.add("highlight")));
+						if (values) cellIds.forEach(i => values.forEach(value => cells[i].querySelectorAll(".candidates div")[parseInt(value,36)-1].classList.add("highlight")));
 						break;
 				}
 			}
 		});
 }
 
-buildGrid(grid, 9);
 setGrid(grid, document.querySelector("select").value, true);
-let solved;
+let solved; // used to simulate a virtual last step showing the grid completed.
 solveButton.onclick = function() {
 	solver ||= new SudokuSolver(readGrid(grid));
 	let start = performance.now();
@@ -673,7 +705,7 @@ solveButton.onclick = function() {
 	solveButton.setAttribute("disabled", "");
 	stepButton.setAttribute("disabled", "");
 	if (solver.prevStates) backButton.removeAttribute("disabled");
-	log.value = solver.logs ? solver.logs.filter(line => line.charAt(0) != "-").join("\r\n") : "";
+	log.value = solver.logs ? solver.logs.filter(line => line.charAt(0) == "#").join("\r\n") : "";
 	if (!solver.logs) solveDuration.value = "Solving duration: "+duration+"ms";
 }
 stepButton.onclick = function() {
@@ -681,12 +713,13 @@ stepButton.onclick = function() {
 	if (!solver) {
 		solver = new SudokuSolver(readGrid(grid), true);
 		response = solver.OK;
+		solved = false;
 	} else {
 		solved = solver.emptyCells == 0;
-		if (!solved) respone = solver.step();
+		if (!solved) response = solver.step();
 	}
-	showSolverState(grid, solver, !solved && solver.prevStates.length);
-	log.value = (solved ? solver.logs.filter(line => line.charAt(0) != "-") : solver.logs.slice(solver.prevStates.length ? solver.prevStates[solver.prevStates.length-1].logs.length : 0)).join("\r\n");
+	showSolverState(grid, solver, !solved);
+	log.value = (solved ? solver.logs.filter(line => line.charAt(0) == "#") : solver.logs.slice(solver.prevStates.length ? solver.prevStates[solver.prevStates.length-1].logs.length : 0)).join("\r\n");
 	if (solved || response == solver.ERROR) stepButton.setAttribute("disabled", "");
 	if (solver.prevStates.length) backButton.removeAttribute("disabled");
 }
@@ -694,7 +727,7 @@ backButton.onclick = function() {
 	if (solver && solver.prevStates && solver.prevStates.length) {
 		if (!solved) solver.setCurrentState(solver.prevStates.pop());
 		solved = false;
-		showSolverState(grid, solver, solver.prevStates.length);
+		showSolverState(grid, solver, true);
 		log.value = solver.logs.slice(solver.prevStates.length ? solver.prevStates[solver.prevStates.length-1].logs.length : 0).join("\r\n");
 		solveButton.removeAttribute("disabled");
 		stepButton.removeAttribute("disabled");
