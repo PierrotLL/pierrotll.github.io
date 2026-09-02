@@ -1,16 +1,19 @@
 <!DOCTYPE html>
-<meta name="viewport" content="width=450,minimum-scale=0.5,maximum-scale=5.0" />
+<meta name="viewport" content="width=484,interactive-widget=overlays-content" />
 <style>
-body { width: max-content; margin: auto }
+body {
+	width: max-content;
+	margin: auto;
+	padding: 0 10px;
+}
 .grid {
 	position: relative;
 	width: fit-content;
 	display: grid;
-	grid-template-columns: repeat(9, 1fr);
+	grid-template-columns: repeat(9, auto);
 }
 .cell {
 	position: relative;
-	box-sizing: border-box;
 	border-right: solid 1px lightgray;
 	border-bottom: solid 1px lightgray;
 	width: 50px;
@@ -20,7 +23,8 @@ body { width: max-content; margin: auto }
 .cell:nth-child(9n+1) { border-left: solid 2px dimgray; }
 .cell:nth-child(3n) { border-right: solid 2px dimgray; }
 .cell:nth-child(n+19):nth-child(-n+27), .cell:nth-child(n+46):nth-child(-n+54), .cell:nth-child(n+73) { border-bottom: solid 2px dimgray; }
-.cell * {
+.cell > * {
+	position: absolute;
 	width: 100%;
 	height: 100%;
 	box-sizing: border-box;
@@ -29,19 +33,17 @@ body { width: max-content; margin: auto }
 	text-align: center;
 	color: black;
 }
+.cell input { z-index: 1 }
 .cell input[disabled] { background: #eee; }
 .cell input:placeholder-shown { background: transparent; }
 .candidates {
-	position: absolute;
-	top: 0;
-	left: 0;
 	display: grid;
 	grid-template-columns: repeat(3, 1fr);
-	z-index: -1;
+	background: white;
 }
 .candidates * { font-size: 13px; color: transparent; }
 
-.cols, .rows, .boxs { pointer-events: none; position: absolute; width: 100%; height: 100%; display: grid; }
+.cols, .rows, .boxs { pointer-events: none; position: absolute; width: 100%; height: 100%; display: grid; z-index: 2; }
 .cols { grid-template-columns: repeat(9, 1fr); }
 .rows { grid-template-columns: repeat(1, 1fr); }
 .boxs { grid-template-columns: repeat(3, 1fr); }
@@ -89,8 +91,8 @@ textarea { height: 10em; resize: vertical; }
 </p>
 <div id=template hidden>
 	<div class=cell>
-		<input type=text maxLength=1 placeholder="" autocomplete="off" oninput="setGrid(grid, text.value=readGrid(grid))" />
 		<div class=candidates></div>
+		<input type=text inputmode=numeric pattern="\d" maxLength=1 placeholder="" autocomplete="off" oninput="setGrid(grid, text.value=readGrid(grid))" />
 	</div>
 </div>
 
@@ -118,16 +120,17 @@ class SudokuSolver {
 	}
 	
 	init(grid) {
-		if (this.logs) this.logs.length = this.prevStates.length = 0;
+		if (this.logs) this.logs.length = 0;
 		this.log("init");
-		this.steps = 0;
-		this.stack = [];
 		this.grid = (typeof(grid)=="string" || grid instanceof String ? grid.split("") : grid.concat()).map(n=>Number(n)||0);
-		this.sqrt = Math.round(Math.sqrt(Math.sqrt(grid.length)));
-		this.width = this.sqrt * this.sqrt;
-		this.length = this.width * this.width;
+		this.width = Math.max(Math.round(Math.sqrt(this.grid.length)), 2);
+		this.boxWidth = (w=>{ let h=Math.floor(Math.sqrt(w)); while (Math.floor(w/h) != w/h) h--; return w/h; })(this.width);
+		this.length = this.grid.length = this.width * this.width;
 		this.housesCells = {row:[], col:[], box:[]};
 		this.emptyCells = 0;
+		this.steps = 0;
+		this.stack = [];
+		if (this.prevStates) this.prevStates.length = 0;
 		this.candidates = {
 			cells: {},
 			houses: {row:[], col:[], box:[]},
@@ -138,7 +141,7 @@ class SudokuSolver {
 			let value = this.grid[cell];
 			let row = Math.floor(cell / this.width);
 			let col = cell % this.width;
-			let box = Math.floor(row / this.sqrt) * this.sqrt + Math.floor(col / this.sqrt);
+			let box = Math.floor(row / (this.width / this.boxWidth)) * (this.width / this.boxWidth) + Math.floor(col / this.boxWidth);
 			values.row[row] ||= {};
 			values.col[col] ||= {};
 			values.box[box] ||= {};
@@ -155,7 +158,7 @@ class SudokuSolver {
 			if (!this.grid[cell]) {
 				let row = Math.floor(cell / this.width);
 				let col = cell % this.width;
-				let box = Math.floor(row / this.sqrt) * this.sqrt + Math.floor(col / this.sqrt);
+				let box = Math.floor(row / (this.width / this.boxWidth)) * (this.width / this.boxWidth) + Math.floor(col / this.boxWidth);
 				this.candidates.cells[cell] = {
 					values:[],
 					houses: {
@@ -185,9 +188,9 @@ class SudokuSolver {
 		if (this.emptyCells == 0) return;
 		this.prevStates && this.prevStates.push(this.getCurrentState(true));
 		this.steps++;
-		let logsLengthBefore;
+		let prevLogsLength;
 		if (this.logs) {
-			logsLengthBefore = this.logs.length;
+			prevLogsLength = this.logs.length;
 			console.log("[Step "+this.steps+"] Before:", structuredClone(this.candidates));
 		}
 		
@@ -199,7 +202,7 @@ class SudokuSolver {
 		if (response == this.ERROR) response = this.onError();
 		
 		if (this.logs) {
-			console.log(this.logs.slice(logsLengthBefore).join("\r\n"));
+			console.log(this.logs.slice(prevLogsLength).join("\r\n"));
 			console.log("[Step "+this.steps+"] After:", structuredClone(this.candidates));
 		}
 		return response;
@@ -208,6 +211,7 @@ class SudokuSolver {
 	solve() {
 		let response = this.OK;
 		while (this.emptyCells && response == this.OK) response = this.step();
+		return response;
 	}
 	
 	findAllSolutions(max = 10) {
@@ -237,6 +241,7 @@ class SudokuSolver {
 			candidates: structuredClone(this.candidates)
 		}, full ? {
 			steps: this.steps,
+			stack: this.stack.concat(),
 			logs: this.logs && this.logs.concat()
 		} : null);
 	}
@@ -484,7 +489,7 @@ class SudokuSolver {
 			for (let id in this.candidates.houses[houseType]) {
 				for (let value in this.candidates.houses[houseType][id]) {
 					let cellsWithCandidate = this.candidates.houses[houseType][id][value].length;
-					if (cellsWithCandidate > this.sqrt) continue;
+					if (cellsWithCandidate > this.boxWidth) continue;
 					let firstCell = this.candidates.houses[houseType][id][value][0];
 					for (let crossHouseType in this.candidates.cells[firstCell].houses) {
 						if (crossHouseType == houseType) continue;
@@ -589,6 +594,7 @@ function buildGrid(container, dim=9) {
 	
 	let cell = template.querySelector(".cell");
 	cell.querySelector(".candidates").innerHTML = Array(9).fill(0).map((_,i)=>"<div>"+(i+1)+"</div>").join("");
+	
 	for (let i=0 ; i<dim*dim ; i++) container.append(cell.cloneNode(true));
 
 	["rows","cols","boxs"].forEach(c => container.innerHTML += "<div class="+c+"></div>");
@@ -609,49 +615,48 @@ function setGrid(container, data, readonly) {
 	
 	if (container == grid) {
 		solver = null;
-		console.clear();
+		//console.clear();
 		solveButton.removeAttribute("disabled");
 		stepButton.removeAttribute("disabled");
 		backButton.setAttribute("disabled", "");
 		solveDuration.value = log.value = "";
 	}
 }
-function updateGrid(container, grid, candidates, logs) {
+function showSolverState(container, solver, prevState) {
 	let cells = container.querySelectorAll(".cell");
-	if (grid) {
-		cells.forEach((cell, i) => cell.getElementsByTagName("input")[0].value = grid[i] || "");
-	}
-	if (candidates) {
-		cells.forEach((div, cell) => {
-			div.querySelectorAll(".candidates div").forEach((div, i) => {
-				div.style.color = candidates[cell] && candidates[cell].values.includes(i+1) ? "inherit" : "";
-			});
-		});
-	}
-	if (logs) {
-		container.querySelectorAll(".highlight").forEach(cell => cell.classList.remove("highlight", "set", "remove"));
-		logs.slice(0,1)
-			.map(line => line.match(/(row|col|box)\[\d+\]/g))
-			.map(matches => matches && matches.map(house=>house.match(/(\w+)\[(\d+)\]/)))
-			.forEach(houses => houses && houses.forEach(house=>container.getElementsByClassName(house[1]+"s")[0].children[house[2]].classList.add("highlight")));
-		
-		logs.map(line => line.match(/(\w+):.*(?: cells?\[([\d,]+)\])(?: values?=([\d,]+))?/))
-			.forEach(match => {
-				if (match) {
-					let [,action,cellIds,values] = match;
-					cellIds = cellIds.split(",");
-					values = values && values.split(",");
-					switch (action) {
-						case "setValue": cells[cellIds[0]].querySelectorAll(".candidates div")[values[0]-1].classList.add("highlight", "set"); break;
-						case "removeCandidate": cells[cellIds[0]].querySelectorAll(".candidates div")[values[0]-1].classList.add("highlight", "remove"); break;
-						default:
-							cellIds.forEach(i => cells[i].classList.add("highlight"));
-							if (values) cellIds.forEach(i => values.forEach(value => cells[i].querySelectorAll(".candidates div")[value-1].classList.add("highlight")));
-							break;
-					}
+	
+	let state = prevState ? solver.prevStates[solver.prevStates.length-1] : solver;
+	cells.forEach((cell, i) => cell.getElementsByTagName("input")[0].value = state.grid[i] || "");
+	
+	cells.forEach((div, cell) =>
+		div.querySelectorAll(".candidates div").forEach((div, i) =>
+			div.style.color = state.candidates.cells[cell] && state.candidates.cells[cell].values.includes(i+1) ? "inherit" : ""
+		)
+	);
+	
+	let logs = solver.logs ? solver.logs.slice(state.logs.length) : [];
+	container.querySelectorAll(".highlight").forEach(cell => cell.classList.remove("highlight", "set", "remove"));
+	logs.slice(0,1)
+		.map(line => line.match(/(row|col|box)\[\d+\]/g))
+		.map(matches => matches && matches.map(house=>house.match(/(\w+)\[(\d+)\]/)))
+		.forEach(houses => houses && houses.forEach(house=>container.getElementsByClassName(house[1]+"s")[0].children[house[2]].classList.add("highlight")));
+	
+	logs.map(line => line.match(/(\w+):.*(?: cells?\[([\d,]+)\])(?: values?=([\d,]+))?/))
+		.forEach(match => {
+			if (match) {
+				let [,action,cellIds,values] = match;
+				cellIds = cellIds.split(",");
+				values = values && values.split(",");
+				switch (action) {
+					case "setValue": cells[cellIds[0]].querySelectorAll(".candidates div")[values[0]-1].classList.add("highlight", "set"); break;
+					case "removeCandidate": cells[cellIds[0]].querySelectorAll(".candidates div")[values[0]-1].classList.add("highlight", "remove"); break;
+					default:
+						cellIds.forEach(i => cells[i].classList.add("highlight"));
+						if (values) cellIds.forEach(i => values.forEach(value => cells[i].querySelectorAll(".candidates div")[value-1].classList.add("highlight")));
+						break;
 				}
-			});
-	}
+			}
+		});
 }
 
 buildGrid(grid, 9);
@@ -661,10 +666,10 @@ solveButton.onclick = function() {
 	solver ||= new SudokuSolver(readGrid(grid));
 	let start = performance.now();
 	solver.solve();
-	solved = true;
 	let duration = performance.now() - start;
 	
-	updateGrid(grid, solver.grid, solver.candidates.cells);
+	solved = true;
+	showSolverState(grid, solver);
 	solveButton.setAttribute("disabled", "");
 	stepButton.setAttribute("disabled", "");
 	if (solver.prevStates) backButton.removeAttribute("disabled");
@@ -672,28 +677,25 @@ solveButton.onclick = function() {
 	if (!solver.logs) solveDuration.value = "Solving duration: "+duration+"ms";
 }
 stepButton.onclick = function() {
+	let response;
 	if (!solver) {
 		solver = new SudokuSolver(readGrid(grid), true);
-		updateGrid(grid, solver.grid, solver.candidates.cells);
-		log.value = solver.logs;
+		response = solver.OK;
 	} else {
 		solved = solver.emptyCells == 0;
-		let prevState = solver.getCurrentState(true);
-		let response = solved ? solver.OK : solver.step();
-		updateGrid(grid, prevState.grid, prevState.candidates.cells, solver.logs.slice(prevState.logs.length));
-		log.value = (solved ? solver.logs.filter(line => line.charAt(0) != "-") : solver.logs.slice(prevState.logs.length)).join("\r\n");
-		if (response == solver.ERROR || solved) stepButton.setAttribute("disabled", "");
-		backButton.removeAttribute("disabled");
+		if (!solved) respone = solver.step();
 	}
+	showSolverState(grid, solver, !solved && solver.prevStates.length);
+	log.value = (solved ? solver.logs.filter(line => line.charAt(0) != "-") : solver.logs.slice(solver.prevStates.length ? solver.prevStates[solver.prevStates.length-1].logs.length : 0)).join("\r\n");
+	if (solved || response == solver.ERROR) stepButton.setAttribute("disabled", "");
+	if (solver.prevStates.length) backButton.removeAttribute("disabled");
 }
 backButton.onclick = function() {
 	if (solver && solver.prevStates && solver.prevStates.length) {
 		if (!solved) solver.setCurrentState(solver.prevStates.pop());
-		else solved = false;
-		let prevState = solver.prevStates.length ? solver.prevStates[solver.prevStates.length-1] : null;
-		updateGrid(grid, prevState && prevState.grid, prevState && prevState.candidates.cells, prevState ? solver.logs.slice(prevState.logs.length) : solver.logs);
-		log.value = (prevState ? solver.logs.slice(prevState.logs.length) : solver.logs).join("\r\n");
-		
+		solved = false;
+		showSolverState(grid, solver, solver.prevStates.length);
+		log.value = solver.logs.slice(solver.prevStates.length ? solver.prevStates[solver.prevStates.length-1].logs.length : 0).join("\r\n");
 		solveButton.removeAttribute("disabled");
 		stepButton.removeAttribute("disabled");
 		if (!solver.prevStates.length) backButton.setAttribute("disabled", "");
