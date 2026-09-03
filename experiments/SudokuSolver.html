@@ -9,6 +9,7 @@ body {
 .grid {
 	position: relative;
 	width: fit-content;
+	margin: auto;
 	display: grid;
 	--width: 9;
 	--box: 3;
@@ -22,7 +23,8 @@ body {
 .grid:after {
 	content: "";
 	position: absolute;
-	top:0;bottom:0;left:0;right:0;
+	width: 100%;
+	height: 100%;
 	z-index: 2;
 	pointer-events: none;
 	background:
@@ -33,29 +35,27 @@ body {
 }
 .cell {
 	position: relative;
-	aspect-ratio: 1;
 	width: var(--cell);
+	aspect-ratio: 1;
 }
 .cell > * {
 	position: absolute;
 	width: 100%;
 	height: 100%;
+}
+.cell input {
+	z-index: 1;
+	border: none;
 	box-sizing: border-box;
 	font-size: 32px;
-	border: none;
 	text-align: center;
-	color: black;
+	background: transparent;
 }
-.cell input { z-index: 1; background: transparent; }
 .cell input:focus { z-index: 4; }
-.cell input[disabled] { background: #eee; }
-.cell input:placeholder-shown + .candidates { visibility: visible; }
-.candidates {
-	display: grid;
-	grid-template-columns: repeat(var(--box), auto);
-	visibility: hidden;
-}
-.candidates * { font-size: 13px; visibility: hidden; }
+.cell input[disabled] { background: #eee; color: #000; }
+.cell input:placeholder-shown + .candidates { display: grid; }
+.candidates { display: none; grid-template-columns: repeat(var(--box), auto); grid-template-columns: repeat(round(up, sqrt(var(--width))), auto); font-size: 13px; }
+.candidates * { display: flex; align-items: center; justify-content: center; visibility: hidden; }
 
 .cols, .rows, .boxs {
 	pointer-events: none;
@@ -72,18 +72,18 @@ body {
 .boxs { grid-template-columns: repeat(calc(var(--width)/var(--box)), auto); }
 .highlight { box-shadow: inset 0 0 3px 2px DeepSkyBlue; }
 .highlight.set { box-shadow: inset 0 0 3px 2px Lime; }
-.highlight.remove:not(.set) { box-shadow: inset 0 0 3px 2px Salmon; }
+.highlight.remove { box-shadow: inset 0 0 3px 2px Salmon; }
 
 option:checked { font-weight: bold; }
-p input, select, button { padding: .5em 1em; }
 p { display: flex; gap: .5em; }
-p input, p textarea { flex-grow: 1; }
+p input, select, button { padding: .5em 1em; }
+p input, p textarea { width: 1em; flex-grow: 1; }
 textarea { height: 10em; resize: vertical; }
 </style>
 
 <p>
-	<select onchange="text.value=this.value; setGrid(grid, this.value, true)">
-		<option value="000000000000000000000000000000000000000000000000000000000000000000000000000000000">Empty</option>
+	<select onchange="setGrid(grid, text.value=this.value, true)">
+		<option value="000000000000000000000000000000000000000000000000000000000000000000000000000000000">Empty 9x9</option>
 		<option value="050703060007000800000816000000030000005000100730040086906000204840572093000409000">Easy 1.2</option>
 		<option value="302401809001000300000000000040708010780502036000090000200609003900000008800070005">Easy 1.2</option>
 		<option value="000823001003000400070000052300960010000102000010038006830000040002000900600789000">Easy 1.2</option>
@@ -99,27 +99,27 @@ textarea { height: 10em; resize: vertical; }
 		<option value="700040006000759000900801003000524000030000020400000007501000208080000010209000304">Diabolical 8.9</option>
 		<option value="006401500300509001000030000205000703030040020670000058060907080000050000002304900">Diabolical 9.1</option>
 		<option value="800000000003600000070090200050007000000045700000100030001000068008500010090000400" selected>Arto Inkala's Hardest</option>
-		<option value="0003040000320000">Hard 4x4</option>
-		<option value="030400005603000100010305064031001046">Easy 6x6</option>
-		<option value="005002600000400005500040001200000001">Hard 6x6</option>
-		<option value="00106020A7006205B0001000080000C3B062A97020600B5005000000037C3B000007000957B0400000018000000A090004009700060001C00000000B400000020C0000005C007126">Hard 12x12</option>
-		<option value="02035000D000C00B060002C008F340E000CE048B00G00000000B0000020A006G0E800040C0D0000100503F0090016E0CF000CB610E00A000001980000040GFB0007000000000000F20BD6E003070005A00004805000006D03AF810006G902B00E06F0C0800100A2000G00100F0000000000003DE2507F008B420F0A68C0D0105">Hard 16x16</option>
+		<option value="0003040000320000">4x4</option>
+		<option value="005002600000400005500040001200000001">6x6</option>
+		<option value="00106020A7006205B0001000080000C3B062A97020600B5005000000037C3B000007000957B0400000018000000A090004009700060001C00000000B400000020C0000005C007126">12x12</option>
+		<option value="02035000D000C00B060002C008F340E000CE048B00G00000000B0000020A006G0E800040C0D0000100503F0090016E0CF000CB610E00A000001980000040GFB0007000000000000F20BD6E003070005A00004805000006D03AF810006G902B00E06F0C0800100A2000G00100F0000000000003DE2507F008B420F0A68C0D0105">16x16</option>
 	</select>
-	<input id=text type=text oninput="setGrid(grid, this.value, true)" onkeydown="this.oninput()" />
+	<input id=text onbeforeinput="return !event.data || event.data.match(/[0-9A-Za-z]+/)!=null" oninput="this.value && setGrid(grid, this.value, true)" onkeydown="if (event.key=='Enter') this.oninput()" />
+	<button id=verifyButton>Verify</button>
 </p>
 <div id=grid></div>
 <p>
 	<button id=solveButton>Solve</button>
 	<button id=stepButton>Step</button>
 	<button id=backButton disabled> &lt;&lt; </button>
-	<input type=text id=solveDuration readonly placeholder="Solve duration"/>
+	<input id=solveDuration readonly placeholder="Solve duration"/>
 </p>
 <p>
 	<textarea id=log autocomplete="off" readonly></textarea>
 </p>
 <div id=template hidden>
 	<div class=cell>
-		<input type=text placeholder="" autocomplete="off" oninput="setGrid(grid, text.value=readGrid(grid))" />
+		<input maxlength=1 placeholder="" autocomplete="off" onbeforeinput="return !event.data || event.data.match(this.pattern)!=null" oninput="setGrid(grid, text.value=readGrid(grid))" />
 		<div class=candidates></div>
 	</div>
 </div>
@@ -149,8 +149,8 @@ class SudokuSolver {
 	init(grid) {
 		if (this.logs) this.logs.length = 0;
 		this.log(" init");
-		this.grid = typeof(grid)=="string" || grid instanceof String ? grid.split("").map(i=>i=="0"?null:i) : grid instanceof Array ? grid.map(i=>i?i.toString(36).toUpperCase():null) : [];
-		this.width = Math.min(Math.max(Math.round(Math.sqrt(this.grid.length)), 2), 36);
+		this.grid = typeof(grid)=="string" || grid instanceof String ? grid.split("").map(i=>i=="0"||i==" "?null:i) : grid instanceof Array ? grid.map(i=>i?i.toString(36).toUpperCase():null) : [];
+		this.width = Math.min(Math.max(Math.round(Math.sqrt(this.grid.length)), 2), 35);
 		this.boxWidth = (w=>{ let h=Math.floor(Math.sqrt(w)); while (Math.floor(w/h) != w/h) h--; return w/h; })(this.width);
 		this.length = this.grid.length = this.width * this.width;
 		this.housesCells = {row:[], col:[], box:[]};
@@ -216,11 +216,8 @@ class SudokuSolver {
 		if (this.emptyCells == 0) return;
 		this.prevStates && this.prevStates.push(this.getCurrentState(true));
 		this.steps++;
-		let prevLogsLength;
-		if (this.logs) {
-			prevLogsLength = this.logs.length;
-			console.log("Before #"+this.steps+":", this.getCurrentState(this.candidates));
-		}
+		let prevLogsLength = this.logs && this.logs.length;
+		this.logs && console.log("Before #"+this.steps+":", this.getCurrentState(this.candidates));
 		
 		let response;
 		for (let i in this.strategies) {
@@ -229,10 +226,7 @@ class SudokuSolver {
 		}
 		if (response == this.ERROR) response = this.onError();
 		
-		if (this.logs) {
-			console.log(this.logs.slice(prevLogsLength).join("\r\n"));
-			console.log("After #"+this.steps+":", this.getCurrentState(this.candidates));
-		}
+		this.logs && console.log(this.logs.slice(prevLogsLength).join("\r\n"));
 		return response;
 	}
 	
@@ -243,15 +237,31 @@ class SudokuSolver {
 	}
 	
 	findAllSolutions(max = 10) {
-		let solutions = [];
-		while (this.emptyCells && solutions.length < max) {
-			this.solve();
-			if (this.emptyCells == 0) {
+		let solutions = [], response;
+		do {
+			response = this.solve();
+			if (response == this.OK) {
 				solutions.push(this.grid.join(""));
-				this.onError();
+				response = this.onError();
 			}
-		} 
+		} while (response == this.OK && solutions.length < max)
 		return solutions;
+	}
+
+	static generate(dimension=9, filledCells=25, uniqueSolution=true, maxTries=1000) {
+		let solver = new SudokuSolver(), tries=0;
+		loop: for (let tries=0 ; tries < maxTries ; tries++) {
+			solver.init("0".repeat(dimension*dimension));
+			for (let i=0 ; i<filledCells ; i++) {
+				let n = Math.floor(Math.random()*solver.emptyCells), j=0, cell;
+				for (cell in solver.candidates.cells) if (j++==n) break;
+				let value = solver.candidates.cells[cell].values[Math.floor(Math.random() * solver.candidates.cells[cell].values.length)];
+				if (solver.setValue(cell, value) == solver.ERROR) continue loop;
+			}
+			let grid = solver.grid.map(i=>i||0).join("");
+			let solutions = solver.findAllSolutions(2).length;
+			if (uniqueSolution ? solutions == 1 : solutions > 0) return grid;
+		}
 	}
 	
 /***********/
@@ -290,16 +300,14 @@ class SudokuSolver {
 	}
 	
 	removeCandidate(cell, value) {
-		if (this.candidates.cells[cell]) {
-			let index = this.candidates.cells[cell].values.indexOf(value);
-			if (index >= 0) {
-				this.logs && this.log(" removeCandidate: cell["+cell+"] value="+value);
-				this.candidates.cells[cell].values.splice(index, 1);
-				if (this.candidates.cells[cell].values.length == 0) return this.ERROR;
-				for (let houseType in this.candidates.cells[cell].houses) {
-					this.candidates.cells[cell].houses[houseType][value].splice(this.candidates.cells[cell].houses[houseType][value].indexOf(Number(cell)), 1);
-					if (this.candidates.cells[cell].houses[houseType][value].length == 0) return this.ERROR;
-				}
+		let index = this.candidates.cells[cell] && this.candidates.cells[cell].values.indexOf(value);
+		if (index >= 0) {
+			this.logs && this.log(" removeCandidate: cell["+cell+"] value="+value);
+			this.candidates.cells[cell].values.splice(index, 1);
+			if (this.candidates.cells[cell].values.length == 0) return this.ERROR;
+			for (let houseType in this.candidates.cells[cell].houses) {
+				this.candidates.cells[cell].houses[houseType][value].splice(this.candidates.cells[cell].houses[houseType][value].indexOf(Number(cell)), 1);
+				if (this.candidates.cells[cell].houses[houseType][value].length == 0) return this.ERROR;
 			}
 		}
 		return this.OK;
@@ -407,7 +415,7 @@ class SudokuSolver {
 				let nbCells = cells.length;
 				if (nbCells >= n) {
 					while (1) {
-					for (let i=0 ; i<n ; i++) selection[i] = i;
+						for (let i=0 ; i<n ; i++) selection[i] = i;
 						let candidates = {};
 						for (let i of selection) {
 							for (let value of this.candidates.cells[cells[i]].values) candidates[value] = true;
@@ -564,7 +572,7 @@ class SudokuSolver {
 									this.candidates.cells[line2[value][0]].houses[crossLineType] == crossLine1 &&
 									this.candidates.cells[line2[value][1]].houses[crossLineType] == crossLine2) {
 									
-									this.logs && this.log("X-Wing: "+houseType+"["+id+"] // "+houseType+"["+this.candidates.houses[houseType].indexOf(line2)+"] value="+value);
+									this.logs && this.log("X-Wing: "+houseType+"["+id+"] // "+houseType+"["+this.candidates.houses[houseType].indexOf(line2)+"] cells["+line1[value]+","+line2[value]+"] value="+value);
 									for (let cell of line1[value]) {
 										for (let i=this.candidates.cells[cell].houses[crossLineType][value].length-1 ; i>=0 ; i--) {
 											let cell2 = this.candidates.cells[cell].houses[crossLineType][value][i];
@@ -607,11 +615,8 @@ class SudokuSolver {
 /////////////////////////////////////////////////////////////////////
 
 let GRIDS = [
-"000000000000000000000000000000000000000000000000000000000000000000000000000000000", // empty
-"800000000003600000070090200050007000000045700000100030001000068008500010090000400", // world hardest
+"701408000000170408648000107307205000500701000800000070070800240080000000000030000", // nakedTriplet
 "400270600798156234020840007237468951849531726561792843082015479070024300004087002", // nakedTriplet
-"100000569492056108056109240009640801064010000218035604040500016905061402621000005", // X-Wing
-"003910700000003400100040006060700000002109600000002010700080003008200000005071900", // X-Wing
 "294513006600842319300697254000056000040080060000470000730164005900735001400928637", // NakedTriplet
 "000030086000020040090078520371856294900142375400397618200703859039205467700904132", // NakedQuad
 ];
@@ -622,28 +627,44 @@ function buildGrid(container, dim=9) {
 	container.style.setProperty("--width", dim);
 	container.style.setProperty("--box", (w=>{ let h=Math.floor(Math.sqrt(w)); while (Math.floor(w/h) != w/h) h--; return w/h; })(dim));
 	
-	let cell = template.querySelector(".cell");
+	let cell = template.querySelector(".cell").cloneNode(true);
 	cell.querySelector("input").setAttribute("inputmode", dim<10 ? "numeric" : "text");
-	cell.querySelector("input").setAttribute("maxLength", Math.ceil(Math.log10(dim+1)));
+	cell.querySelector("input").setAttribute("pattern", dim<10 ? "\\d" : "\\w");
 	cell.querySelector(".candidates").innerHTML = Array(dim).fill(0).map((_,i)=>"<div>"+(i+1).toString(36).toUpperCase()+"</div>").join("");
+	if (dim >= 16) cell.querySelector(".candidates").style.fontSize = "9px";
 	
 	for (let i=0 ; i<dim*dim ; i++) container.append(cell.cloneNode(true));
 
 	["rows","cols","boxs"].forEach(c => container.innerHTML += "<div class="+c+"></div>");
 	container.querySelectorAll(".rows, .cols, .boxs").forEach(d=>d.innerHTML += "<div></div>".repeat(dim));
 }
+function cellArrowKeys(e) {
+	let i=e.target, c=i.parentElement, p=c.parentElement, w=p.style.getPropertyValue("--width"), n=Array.from(p.children).indexOf(c), x=n%w, y=Math.floor(n/w), dx=0, dy=0;
+	switch (e.key) {
+		case "ArrowUp": dy = -1; break;
+		case "ArrowDown": dy = 1; break;
+		case "ArrowLeft": dx = -1; break;
+		case "ArrowRight": dx = 1; break;
+	}
+	do { x+=dx; y+=dy; } while(x>=0 && x<w && y>=0 && y<w && (i=p.children[x+y*w].querySelector("input")).disabled);
+	if (dx || dy && !i.disabled) { i.focus(); i.setSelectionRange(0,1); e.preventDefault(); }
+}
 function readGrid(container) {
-	return Array.from(container.querySelectorAll(".cell input")).map(i=>i.value||0).join("");
+	return Array.from(container.querySelectorAll(".cell input")).map(i=>i.value.toUpperCase()||0).join("");
 }
 function setGrid(container, data, readonly) {
-	data = data.toUpperCase().split("").map(i=>i=="0"?"":i);
+	data = data.toUpperCase().split("").map(i=>i=="0"||i==" "?null:i);
 	
-	if (container.style.getPropertyValue("--width") != Math.sqrt(data.length)) buildGrid(container, Math.sqrt(data.length));
+	let dim = Math.min(Math.max(Math.round(Math.sqrt(data.length)), 2), 35)
+	if (container.style.getPropertyValue("--width") != dim) buildGrid(container, dim);
 	let cells = container.querySelectorAll(".cell input");
 	cells.forEach((cell, i) => cell.value = data[i] || "");
-	if (readonly) cells.forEach((cell, i) => data[i] ? cell.setAttribute("disabled","") : cell.removeAttribute("disabled"));
-	container.querySelectorAll(".candidates div").forEach(div => div.style.visibility = "");
-	container.querySelectorAll(".highlight").forEach(cell => cell.classList.remove("highlight", "set", "remove"));
+	if (readonly) cells.forEach((cell, i) => cell.disabled = data[i]!=null);
+	if (readonly) container.querySelectorAll(".candidates div").forEach(div => div.style.visibility = "");
+	container.querySelectorAll(".highlight").forEach(div => div.classList.remove("highlight", "set", "remove"));
+	
+	verifyButton.innerHTML = "Verify";
+	verifyButton.removeAttribute("disabled");
 	
 	if (container == grid) {
 		solver = null;
@@ -667,14 +688,14 @@ function showSolverState(container, solver, diff) {
 	);
 	
 	let logs = solver.logs ? solver.logs.slice(state.logs.length) : [];
-	container.querySelectorAll(".highlight").forEach(cell => cell.classList.remove("highlight", "set", "remove"));
+	container.querySelectorAll(".highlight").forEach(div => div.classList.remove("highlight", "set", "remove"));
 	logs.slice(0,1)
-		.map(line => line.match(/(row|col|box)\[.+?\]/g))
-		.map(matches => matches && matches.map(house=>house.match(/(\w+)\[(.+?)\]/)))
+		.map(line => line.match(/(row|col|box)\[\d+\]/g))
+		.map(matches => matches && matches.map(house=>house.match(/(\w+)\[(\d+)\]/)))
 		.forEach(houses => houses && houses.forEach(house=>container.getElementsByClassName(house[1]+"s")[0].children[house[2]].classList.add("highlight")));
 	
 	logs.map(line => line.match(/(\w+):.*(?: cells?\[(.+?)\])(?: values?=(\S+))?/))
-		.forEach(match => {
+		.forEach((match, i, a) => {
 			if (match) {
 				let [,action,cellIds,values] = match;
 				cellIds = cellIds.split(",");
@@ -682,17 +703,21 @@ function showSolverState(container, solver, diff) {
 				switch (action) {
 					case "setValue": cells[cellIds[0]].querySelectorAll(".candidates div")[parseInt(values[0],36)-1].classList.add("highlight", "set"); break;
 					case "removeCandidate": cells[cellIds[0]].querySelectorAll(".candidates div")[parseInt(values[0],36)-1].classList.add("highlight", "remove"); break;
-					case "backtracking": cells[cellIds[0]].classList.add("highlight", "remove"); break;
+					case "backtracking": cells[cellIds[0]].classList.add("highlight", "remove"); cells[a[i-1][2]].classList.add("highlight", "remove"); break;
 					default:
-						cellIds.forEach(i => cells[i].classList.add("highlight"));
-						if (values) cellIds.forEach(i => values.forEach(value => cells[i].querySelectorAll(".candidates div")[parseInt(value,36)-1].classList.add("highlight")));
+						cellIds.forEach(cell => cells[cell].classList.add("highlight"));
+						if (values) cellIds.forEach(cell => values.forEach(value => cells[cell].querySelectorAll(".candidates div")[parseInt(value,36)-1].classList.add("highlight")));
 						break;
 				}
 			}
 		});
 }
-
-setGrid(grid, document.querySelector("select").value, true);
+verifyButton.onclick = function() {
+	verifyButton.setAttribute("disabled", "");
+	let solver = new SudokuSolver(readGrid(grid));
+	let solutions = solver.findAllSolutions(2).length;
+	verifyButton.innerHTML = solutions==0 ? "no solutions" : solutions==1 ? "unique solution" : "multiple solutions";
+}
 let solved; // used to simulate a virtual last step showing the grid completed.
 solveButton.onclick = function() {
 	solver ||= new SudokuSolver(readGrid(grid));
@@ -746,4 +771,6 @@ function benchmark(functions, iterations = 1, iterationsTotal = 1) {
 	}
 	for (name in functions) console.log(name+": "+(times[name]/iterationsTotal));
 }
+
+setGrid(grid, document.querySelector("select").value, true);
 </script>
