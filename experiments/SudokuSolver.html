@@ -158,7 +158,6 @@ class SudokuSolver {
 		this.width = Math.min(Math.max(Math.round(Math.sqrt(this.grid.length)), 2), 35);
 		this.boxWidth = (w=>{ let h=Math.floor(Math.sqrt(w)); while (Math.floor(w/h) != w/h) h--; return w/h; })(this.width);
 		this.length = this.grid.length = this.width * this.width;
-		this.housesCells = {row:[], col:[], box:[]};
 		this.emptyCells = 0;
 		this.steps = 0;
 		this.stack = [];
@@ -182,9 +181,6 @@ class SudokuSolver {
 				values.col[col][value] = true;
 				values.box[box][value] = true;
 			} else this.emptyCells++;
-			(this.housesCells.row[row] ||= []).push(cell);
-			(this.housesCells.col[col] ||= []).push(cell);
-			(this.housesCells.box[box] ||= []).push(cell);
 		}
 		for (let cell=0 ; cell<this.length ; cell++) {
 			if (!this.grid[cell]) {
@@ -256,8 +252,8 @@ class SudokuSolver {
 	static generate(dimension=9, uniqueSolution=true, minFilledCells=20, maxFilledCells=40, maxTries=1000) {
 		let solver = new SudokuSolver(), grid;
 		function addRandomValue() {
-			let emptyCells = Object.keys(solver.candidates.cells);
-			let cell = emptyCells[parseInt(Math.random()*solver.emptyCells)];
+			let cells = Object.keys(solver.candidates.cells);
+			let cell = cells[parseInt(Math.random() * cells.length)];
 			let candidates = solver.candidates.cells[cell].values;
 			let value = candidates[parseInt(Math.random() * candidates.length)];
 			return solver.setValue(cell, value);
@@ -270,7 +266,6 @@ class SudokuSolver {
 				if (addRandomValue() == solver.ERROR) continue nextTry;
 				grid = solver.grid.concat();
 				let solutions = solver.findAllSolutions(uniqueSolution ? 2 : 1).length;
-				console.log(tries, i, solutions, grid)
 				if (!solutions) continue nextTry;
 				if (solutions==1 || !uniqueSolution) return grid.map(v=>v||0).join("");
 			}
