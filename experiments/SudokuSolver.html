@@ -5,6 +5,7 @@ body {
 	width: max-content;
 	margin: auto;
 	padding: 0 10px;
+	font-family: sans-serif;
 }
 .grid {
 	position: relative;
@@ -14,6 +15,8 @@ body {
 	--width: 9;
 	--box: 3;
 	--cell: 50px;
+	--value: 32px;
+	--candidate: 13px;
 	--line: 1px;
 	--border: 3px;
 	gap: var(--line);
@@ -47,14 +50,14 @@ body {
 	z-index: 1;
 	border: none;
 	box-sizing: border-box;
-	font-size: 32px;
+	font-size: var(--value);
 	text-align: center;
 	background: transparent;
 }
 .cell input:focus { z-index: 4; }
 .cell input[disabled] { background: #eee; color: #000; }
 .cell input:placeholder-shown + .candidates { display: grid; }
-.candidates { display: none; grid-template-columns: repeat(var(--box), auto); grid-template-columns: repeat(round(up, sqrt(var(--width))), auto); font-size: 13px; }
+.candidates { display: none; grid-template-columns: repeat(var(--box), auto); grid-template-columns: repeat(round(up, sqrt(var(--width))), auto); font-size: var(--candidate); }
 .candidates * { display: flex; align-items: center; justify-content: center; visibility: hidden; }
 
 .cols, .rows, .boxs {
@@ -82,7 +85,7 @@ textarea { height: 10em; resize: vertical; }
 </style>
 
 <p>
-	<select onchange="setGrid(grid, text.value=this.value, true)">
+	<select id=select onchange="setGrid(grid, this.value, true)">
 		<option value="000000000000000000000000000000000000000000000000000000000000000000000000000000000">Empty 9x9</option>
 		<option value="050703060007000800000816000000030000005000100730040086906000204840572093000409000">Easy 1.2</option>
 		<option value="302401809001000300000000000040708010780502036000090000200609003900000008800070005">Easy 1.2</option>
@@ -104,14 +107,15 @@ textarea { height: 10em; resize: vertical; }
 		<option value="00106020A7006205B0001000080000C3B062A97020600B5005000000037C3B000007000957B0400000018000000A090004009700060001C00000000B400000020C0000005C007126">12x12</option>
 		<option value="02035000D000C00B060002C008F340E000CE048B00G00000000B0000020A006G0E800040C0D0000100503F0090016E0CF000CB610E00A000001980000040GFB0007000000000000F20BD6E003070005A00004805000006D03AF810006G902B00E06F0C0800100A2000G00100F0000000000003DE2507F008B420F0A68C0D0105">16x16</option>
 	</select>
-	<input id=text onbeforeinput="return !event.data || event.data.match(/[0-9A-Za-z]+/)!=null" oninput="this.value && setGrid(grid, this.value, true)" onkeydown="if (event.key=='Enter') this.oninput()" />
+	<input id=textInput onbeforeinput="return !event.data || event.data.match(/[0-9A-Za-z]+/)!=null" oninput="this.value && setGrid(grid, this.value, true)" onkeydown="if (event.key=='Enter') this.oninput()" />
 	<button id=verifyButton>Verify</button>
 </p>
 <div id=grid></div>
 <p>
-	<button id=solveButton>Solve</button>
-	<button id=stepButton>Step</button>
-	<button id=backButton disabled> &lt;&lt; </button>
+	<button id=resetButton disabled>&#9198; Reset</button>
+	<button id=backButton disabled>&#9664; Back</button>
+	<button id=stepButton>&#9654; Step</button>
+	<button id=solveButton>&#9197; Solve</button>
 	<input id=solveDuration readonly placeholder="Solve duration"/>
 </p>
 <p>
@@ -119,7 +123,7 @@ textarea { height: 10em; resize: vertical; }
 </p>
 <div id=template hidden>
 	<div class=cell>
-		<input maxlength=1 placeholder="" autocomplete="off" onbeforeinput="return !event.data || event.data.match(this.pattern)!=null" oninput="setGrid(grid, text.value=readGrid(grid))" />
+		<input maxlength=1 placeholder="" autocomplete="off" onbeforeinput="return !event.data || event.data.match(this.pattern)!=null" oninput="setGrid(grid, readGrid(grid))" />
 		<div class=candidates></div>
 	</div>
 </div>
@@ -134,12 +138,14 @@ class SudokuSolver {
 			this.hiddenSingle,
 			this.nakedPair,
 			this.hiddenPair,
+			this.intersectionRemoval,
 			//this.nakedTriplet,
 			//this.hiddenTriplet,
 			//this.nakedQuad,
 			//this.hiddenQuad,
-			this.intersectionRemoval,
 			this.XWing,
+			this.YWing,
+			this.WWing,
 			this.backtracking
 		];
 		if (logs) { this.logs = []; this.prevStates = [] }
@@ -248,19 +254,27 @@ class SudokuSolver {
 		return solutions;
 	}
 
-	static generate(dimension=9, filledCells=25, uniqueSolution=true, maxTries=1000) {
-		let solver = new SudokuSolver(), tries=0;
-		loop: for (let tries=0 ; tries < maxTries ; tries++) {
+	static generate(dimension=9, uniqueSolution=true, minFilledCells=20, maxFilledCells=40, maxTries=1000) {
+		let solver = new SudokuSolver(), grid;
+		function addRandomValue() {
+			let emptyCells = Object.keys(solver.candidates.cells);
+			let cell = emptyCells[parseInt(Math.random()*solver.emptyCells)];
+			let candidates = solver.candidates.cells[cell].values;
+			let value = candidates[parseInt(Math.random() * candidates.length)];
+			return solver.setValue(cell, value);
+		}
+		nextTry: for (let tries=0 ; tries<maxTries ; tries++) {
 			solver.init("0".repeat(dimension*dimension));
-			for (let i=0 ; i<filledCells ; i++) {
-				let n = Math.floor(Math.random()*solver.emptyCells), j=0, cell;
-				for (cell in solver.candidates.cells) if (j++==n) break;
-				let value = solver.candidates.cells[cell].values[Math.floor(Math.random() * solver.candidates.cells[cell].values.length)];
-				if (solver.setValue(cell, value) == solver.ERROR) continue loop;
+			for (let i=0 ; i<minFilledCells-1 ; i++) if (addRandomValue() == solver.ERROR) continue nextTry;
+			for (let i=minFilledCells ; i<=maxFilledCells ; i++) {
+				if (i > minFilledCells) solver.init(grid);
+				if (addRandomValue() == solver.ERROR) continue nextTry;
+				grid = solver.grid.concat();
+				let solutions = solver.findAllSolutions(uniqueSolution ? 2 : 1).length;
+				console.log(tries, i, solutions, grid)
+				if (!solutions) continue nextTry;
+				if (solutions==1 || !uniqueSolution) return grid.map(v=>v||0).join("");
 			}
-			let grid = solver.grid.map(i=>i||0).join("");
-			let solutions = solver.findAllSolutions(2).length;
-			if (uniqueSolution ? solutions == 1 : solutions > 0) return grid;
 		}
 	}
 	
@@ -338,65 +352,124 @@ class SudokuSolver {
 	
 	/* cell has only one candidate => set cell value */
 	nakedSingle() {
+		let result;
 		for (let cell in this.candidates.cells) {
-			if (this.candidates.cells[cell].values.length == 1) {
-				this.logs && this.log("nakedSingle: cell["+cell+"]");
-				return this.setValue(cell, this.candidates.cells[cell].values[0]);
-			}
+			if (this.candidates.cells[cell].values.length > 1) continue;
+			this.logs && this.log("nakedSingle: cell["+cell+"]");
+			result = this.setValue(cell, this.candidates.cells[cell].values[0]);
+			if (result == this.ERROR) break;
 		}
+		return result;
 	}
 	
 	/* cell is the only one in house (row, col, box) with that candidate => set cell value */
 	hiddenSingle() {
+		let result;
 		for (let houseType in this.candidates.houses) {
 			for (let id in this.candidates.houses[houseType]) {
 				for (let value in this.candidates.houses[houseType][id]) {
-					if (this.candidates.houses[houseType][id][value].length == 1) {
-						this.logs && this.log("hiddenSingle: "+houseType+"["+id+"] cell["+this.candidates.houses[houseType][id][value][0]+"]");
-						return this.setValue(this.candidates.houses[houseType][id][value][0], value);
-					}
+					if (this.candidates.houses[houseType][id][value].length > 1) continue;
+					this.logs && this.log("hiddenSingle: "+houseType+"["+id+"] cell["+this.candidates.houses[houseType][id][value][0]+"] value="+value);
+					result = this.setValue(this.candidates.houses[houseType][id][value][0], value);
+					if (result == this.ERROR) return this.ERROR;
 				}
 			}
 		}
+		return result;
 	}
 	
 	/* 2 cells in a house have exactly [x,y] as candidates => remove x and y from candidates of other cells in the house */
 	nakedPair() {
 		for (let cell in this.candidates.cells) {
-			if (this.candidates.cells[cell].values.length == 2) {
-				let values = this.candidates.cells[cell].values;
-				for (let houseType in this.candidates.cells[cell].houses) {
-					if (this.candidates.subsets[houseType][cell]) continue;
-					let house = this.candidates.cells[cell].houses[houseType];
-					let cells = house[values[0]].length < house[values[1]].length ? house[values[0]] : house[values[1]];
-					for (let cell2 of cells) {
-						let values2 = this.candidates.cells[cell2].values;
-						if (cell2 != cell && values2.length == 2 && values2[0] == values[0] && values2[1] == values[1]) {
-							this.candidates.subsets[houseType][cell] = true;
-							this.candidates.subsets[houseType][cell2] = true;
-							if (house[values[0]].length > 2 || house[values[1]].length > 2) {
-								this.logs && this.log("nakedPair: "+houseType+"["+this.candidates.houses[houseType].indexOf(house)+"] cells["+cell+","+cell2+"] values="+values);
-								for (let value of values) {
-									let length = house[value].length;
-									if (length > 2) { // if something to remove
-										for (let i=length-1 ; i>=0 ; i--) {
-											if (house[value][i] != cell && house[value][i] != cell2) {
-												if (this.removeCandidate(house[value][i], value) == this.ERROR) return this.ERROR;
-											}
-										}
-									}
-								}
-								return this.OK;
-							}
+			let values = this.candidates.cells[cell].values;
+			if (values.length != 2) continue;
+			houseType: for (let houseType in this.candidates.cells[cell].houses) {
+				if (this.candidates.subsets[houseType][cell]) continue;
+				let house = this.candidates.cells[cell].houses[houseType],
+					len1 = house[values[0]].length,
+					len2 = house[values[1]].length,
+					len = len1<len2 ? len1:len2,
+					cells = house[values[len1<len2?0:1]];
+				for (let i=len-1 ; cells[i]!=cell ; i--) {
+					let cell2 = cells[i],
+						values2 = this.candidates.cells[cell2].values;
+					if (values2.length != 2 || values2[0] != values[0] || values2[1] != values[1]) continue;
+					this.candidates.subsets[houseType][cell] = true;
+					this.candidates.subsets[houseType][cell2] = true;
+					if (len1 == 2 && len2 == 2) continue houseType; // if nothing to remove
+					this.logs && this.log("nakedPair: "+houseType+"["+this.candidates.houses[houseType].indexOf(house)+"] cells["+cell+","+cell2+"] values="+values);
+					for (let j=0 ; j<2 ; j++) {
+						let value = values[j],
+							cells = house[value],
+							length = cells.length;
+						if (length == 2) continue;
+						for (let k=length-1 ; k>=0 ; k--) {
+							if (cells[k] == cell || cells[k] == cell2) continue;
+							if (this.removeCandidate(cells[k], value) == this.ERROR) return this.ERROR;
 						}
+					}
+					return this.OK;
+				}
+			}
+		}
+	}
+	
+	/* only 2 cells in a house have [x,y] in their candidates => remove candidates out of [x,y] from these cells */
+	hiddenPair() {
+		for (let houseType in this.candidates.houses) {
+			for (let id in this.candidates.houses[houseType]) {
+				let house = this.candidates.houses[houseType][id];
+				for (let value1 in house) {
+					let cells1 = house[value1];
+					if (cells1.length != 2 || this.candidates.subsets[houseType][cells1[0]]) continue;
+					for (let value2 in house) {
+						if (value2 <= value1) continue;
+						let cells2 = house[value2];
+						if (cells2.length != 2 || cells1[0]!=cells2[0] || cells1[1]!=cells2[1]) continue;
+						this.logs && this.log("hiddenPair: "+houseType+"["+id+"] cells["+cells1+"] values="+value1+","+value2);
+						for (let i=0 ; i<2 ; i++) {
+							let cell = house[value1][i],
+								values = this.candidates.cells[cell].values;
+							for (let j=values.length-1 ; j>=0 ; j--) {
+								if (values[j] == value1 || values[j] == value2) continue;
+								if (this.removeCandidate(cell, values[j]) == this.ERROR) return this.ERROR;
+							}
+							this.candidates.subsets[houseType][cell] = true;
+						}
+						return this.OK;
 					}
 				}
 			}
 		}
 	}
-	nakedPair2() {
-		return this.nakedSubset(2);
+	
+	/* all cells with a candidate in a house are in the intersection with another house => remove candidate from other cells of the second house */
+	intersectionRemoval() {
+		for (let houseType in this.candidates.houses) {
+			for (let id in this.candidates.houses[houseType]) {
+				let house = this.candidates.houses[houseType][id];
+				for (let value in house) {
+					let cells = house[value], houseLength = cells.length;
+					if (houseLength > this.boxWidth) continue;
+					crossHouseType: for (let crossHouseType in this.candidates.cells[cells[0]].houses) {
+						if (crossHouseType == houseType) continue;
+						let crossHouse = this.candidates.cells[cells[0]].houses[crossHouseType], crossHouseLength = crossHouse[value].length;
+						if (crossHouseLength <= houseLength) continue;
+						for (let i=houseLength-1 ; i ; i--) {
+							if (this.candidates.cells[cells[i]].houses[crossHouseType] != crossHouse) continue crossHouseType;
+						}
+						this.logs && this.log("intersectionRemoval: "+houseType+"["+id+"] x "+crossHouseType+"["+this.candidates.houses[crossHouseType].indexOf(crossHouse)+"] cells["+cells+"] value="+value);
+						for (let i=crossHouseLength-1 ; i>=0 ; i--) {
+							if (this.candidates.cells[crossHouse[value][i]].houses[houseType] != house &&
+								this.removeCandidate(crossHouse[value][i], value) == this.ERROR) return this.ERROR;
+						}
+						return this.OK;
+					}
+				}
+			}
+		}
 	}
+	
 	nakedTriplet() {
 		return this.nakedSubset(3);
 	}
@@ -458,35 +531,6 @@ class SudokuSolver {
 		}
 	}
 	
-	/* only 2 cells in a house have [x,y] in their candidates => remove candidates out of [x,y] from these cells */
-	hiddenPair() {
-		for (let houseType in this.candidates.houses) {
-			for (let id in this.candidates.houses[houseType]) {
-				for (let value1 in this.candidates.houses[houseType][id]) {
-					let cells = this.candidates.houses[houseType][id][value1];
-					if (!this.candidates.subsets[houseType][cells[0]] && cells.length == 2) {
-						for (let val=parseInt(value1, 36)+1 ; val<=this.width ; val++) {
-							let value2 = val.toString(36).toUpperCase();
-							let cells2 = this.candidates.houses[houseType][id][value2];
-							if (cells2 && cells2.length == 2 && cells[0]==cells2[0] && cells[1]==cells2[1]) {
-								this.logs && this.log("hiddenPair: "+houseType+"["+id+"] cells["+cells+"] values="+value1+","+value2);
-								for (let cell of cells) {
-									let values = this.candidates.cells[cell].values;
-									for (let i=values.length-1 ; i>=0 ; i--) {
-										if (values[i] != value1 && values[i] != value2) {
-											if (this.removeCandidate(cell, values[i]) == this.ERROR) return this.ERROR;
-										}
-									}
-									this.candidates.subsets[houseType][cell] = true;
-								}
-								return this.OK;
-							}
-						}
-					}
-				}
-			}
-		}
-	}
 	hiddenTriplet() {
 		return this.hiddenSubset(3);
 	}
@@ -520,30 +564,72 @@ class SudokuSolver {
 		}
 	}
 	
-	/* all cells with a candidate in a house are in the intersection with another house => remove candidate from other cells of the second house */
-	intersectionRemoval() {
+	/* if 2 parallel lines (rows or cols) have exactly 2 time the same candidate in the same perpendicular lines => remove candidate from others cells of the perpendicular lines */
+	XWing() {
 		for (let houseType in this.candidates.houses) {
+			if (houseType == "box") continue;
+			let crossLineType = houseType == "row" ? "col" : "row";
 			for (let id in this.candidates.houses[houseType]) {
-				for (let value in this.candidates.houses[houseType][id]) {
-					let cellsWithCandidate = this.candidates.houses[houseType][id][value].length;
-					if (cellsWithCandidate > this.boxWidth) continue;
-					let firstCell = this.candidates.houses[houseType][id][value][0];
-					for (let crossHouseType in this.candidates.cells[firstCell].houses) {
-						if (crossHouseType == houseType) continue;
-						let crossHouse = this.candidates.cells[firstCell].houses[crossHouseType];
-						if (crossHouse[value].length <= cellsWithCandidate) continue;
-						let sameCrossHouse = true;
-						for (let i=1 ; i<cellsWithCandidate ; i++) {
-							let cell = this.candidates.houses[houseType][id][value][i];
-							if (this.candidates.cells[cell].houses[crossHouseType] != crossHouse) { sameCrossHouse = false; break; }
+				let line1 = this.candidates.houses[houseType][id];
+				for (let value in line1) {
+					if (line1[value].length != 2) continue;
+					let crossLine1 = this.candidates.cells[line1[value][0]].houses[crossLineType],
+						crossLine2 = this.candidates.cells[line1[value][1]].houses[crossLineType],
+						length1 = crossLine1[value].length, length2 = crossLine2[value].length;
+					if (length1 <= 2 && length2 <= 2) continue;
+					for (let cell of length1<length2 ? crossLine1[value] : crossLine2[value]) {
+						let line2 = this.candidates.cells[cell].houses[houseType];
+						if (line2 == line1 || line2[value].length != 2 ||
+							this.candidates.cells[line2[value][0]].houses[crossLineType] != crossLine1 ||
+							this.candidates.cells[line2[value][1]].houses[crossLineType] != crossLine2) continue;
+						
+						this.logs && this.log("X-Wing: "+houseType+"["+id+"] // "+houseType+"["+this.candidates.houses[houseType].indexOf(line2)+"] cells["+line1[value]+","+line2[value]+"] value="+value);
+						for (let cell of line1[value]) {
+							for (let i=this.candidates.cells[cell].houses[crossLineType][value].length-1 ; i>=0 ; i--) {
+								let cell2 = this.candidates.cells[cell].houses[crossLineType][value][i];
+								if (this.candidates.cells[cell2].houses[houseType] != line1 &&
+									this.candidates.cells[cell2].houses[houseType] != line2 &&
+									this.removeCandidate(cell2, value) == this.ERROR)
+										return this.ERROR;
+							}
 						}
-						if (sameCrossHouse) {
-							this.logs && this.log("intersectionRemoval: "+houseType+"["+id+"] x "+crossHouseType+"["+this.candidates.houses[crossHouseType].indexOf(crossHouse)+"] cells["+this.candidates.houses[houseType][id][value]+"] value="+value);
-							for (let i=crossHouse[value].length-1 ; i>=0 ; i--) {
-								let cell = crossHouse[value][i];
-								if (this.candidates.cells[cell].houses[houseType] != this.candidates.houses[houseType][id]) {
-									if (this.removeCandidate(cell, value) == this.ERROR) return this.ERROR;
-								}
+						return this.OK;
+					}
+				}
+			}
+		}
+	}
+	
+	YWing() {
+		for (let cellAB in this.candidates.cells) {
+			let values = this.candidates.cells[cellAB].values;
+			if (values.length != 2) continue;
+			let A = values[0], B = values[1];
+			for (let houseType1 in this.candidates.cells[cellAB].houses) {
+				if (this.candidates.subsets[houseType1][cellAB]) continue;
+				let cells = this.candidates.cells[cellAB].houses[houseType1][A], len = cells.length;
+				for (let i=0 ; i<len ; i++ ) {
+					let cellAC = cells[i], values = this.candidates.cells[cellAC].values;
+					if (cellAC == cellAB || values.length != 2) continue;
+					let C = values[values[0] == A ? 1 : 0];
+					for (let houseType2 in this.candidates.cells[cellAB].houses) {
+						if (houseType1 == houseType2 || this.candidates.subsets[houseType2][cellAB]) continue;
+						let cells = this.candidates.cells[cellAB].houses[houseType2][B], len = cells.length;
+						for (let i=0 ; i<len ; i++ ) {
+							let cellBC = cells[i], values = this.candidates.cells[cellBC].values;
+							if (cellBC == cellAB || values.length != 2 || (values[0]!=C && values[1]!=C)) continue;
+							this.candidates.subsets[houseType1][cellAB] = this.candidates.subsets[houseType1][cellAC] = true;
+							this.candidates.subsets[houseType2][cellAB] = this.candidates.subsets[houseType2][cellBC] = true;
+							let removable;
+							for (let cell of this.candidates.cells[cellAC].houses[houseType2][C]) {
+								if (cell == cellAC || cell == cellBC || this.candidates.cells[cell].houses[houseType1] != this.candidates.cells[cellBC].houses[houseType1]) continue;
+								removable ||= {};
+								removable[cell] = true;
+							}
+							if (!removable) continue;
+							this.logs && this.log("Y-Wing: cells["+cellAB+","+cellAC+","+cellBC+"] values="+A+","+B+","+C);
+							for (let cell in removable) {
+								if (this.removeCandidate(cell, C) == this.ERROR) return this.ERROR;
 							}
 							return this.OK;
 						}
@@ -553,36 +639,58 @@ class SudokuSolver {
 		}
 	}
 	
-	/* if 2 parallel lines (rows or cols) have exactly 2 time the same candidate in the same perpendicular lines => remove candidate from others cells of the perpendicular lines */
-	XWing() {
-		for (let houseType in this.candidates.houses) {
-			if (houseType == "box") continue;
-			let crossLineType = houseType == "row" ? "col" : "row";
-			for (let id in this.candidates.houses[houseType]) {
-				let line1 = this.candidates.houses[houseType][id];
-				for (let value in line1) {
-					if (line1[value].length == 2) {
-						let crossLine1 = this.candidates.cells[line1[value][0]].houses[crossLineType];
-						let crossLine2 = this.candidates.cells[line1[value][1]].houses[crossLineType];
-						let length1 = crossLine1[value].length, length2 = crossLine2[value].length;
-						if (length1 > 2 || length2 > 2) {
-							for (let cell of length1<length2 ? crossLine1[value] : crossLine2[value]) {
-								let line2 = this.candidates.cells[cell].houses[houseType];
-								if (line2 != line1 && line2[value].length == 2 &&
-									this.candidates.cells[line2[value][0]].houses[crossLineType] == crossLine1 &&
-									this.candidates.cells[line2[value][1]].houses[crossLineType] == crossLine2) {
-									
-									this.logs && this.log("X-Wing: "+houseType+"["+id+"] // "+houseType+"["+this.candidates.houses[houseType].indexOf(line2)+"] cells["+line1[value]+","+line2[value]+"] value="+value);
-									for (let cell of line1[value]) {
-										for (let i=this.candidates.cells[cell].houses[crossLineType][value].length-1 ; i>=0 ; i--) {
-											let cell2 = this.candidates.cells[cell].houses[crossLineType][value][i];
-											if (this.candidates.cells[cell2].houses[houseType] != line1 &&
-												this.candidates.cells[cell2].houses[houseType] != line2 &&
-												this.removeCandidate(cell2, value) == this.ERROR)
-													return this.ERROR;
+	WWing() {
+		let cellsWith2Candidates, n = 0;
+		for (let cell in this.candidates.cells) {
+			if (this.candidates.cells[cell].values.length != 2) continue;
+			cellsWith2Candidates ||= {};
+			cellsWith2Candidates[cell] = true;
+			n++;
+		}
+		if (n < 4) return;
+		for (let startCell in cellsWith2Candidates) {
+			let values = this.candidates.cells[startCell].values, numberCell1 = Number(startCell);
+			endCell: for (let endCell in cellsWith2Candidates) {
+				if (Number(endCell) <= numberCell1 || this.candidates.cells[endCell].values[0] != values[0] || this.candidates.cells[endCell].values[1] != values[1]) continue;
+				for (let houseType in this.candidates.cells[startCell].houses) { // make sure startCell and endCell are not in the same house
+					if (this.candidates.cells[startCell].houses[houseType] == this.candidates.cells[endCell].houses[houseType]) continue endCell;
+				}
+				for (let startHouseType in this.candidates.cells[startCell].houses) {
+					let startHouse = this.candidates.cells[startCell].houses[startHouseType];
+					for (let i=0 ; i<2 ; i++) {
+						let value = values[i], len1 = startHouse[value].length;
+						for (let j=0 ; j<len1 ; j++) {
+							let midCell1 = startHouse[value][j];
+							if (midCell1 == startCell || !cellsWith2Candidates[midCell1]) continue;
+							for (let endHouseType in this.candidates.cells[endCell].houses) {
+								let endHouse = this.candidates.cells[endCell].houses[endHouseType], len2 = endHouse[value].length;
+								for (let k=0 ; k<len2 ; k++) {
+									let midCell2 = endHouse[value][k];
+									if (midCell2 == endCell || midCell2 == midCell1 || !cellsWith2Candidates[midCell2]) continue;
+									for (let midHouseType in this.candidates.cells[midCell1].houses) {
+										if (this.candidates.cells[midCell1].houses[midHouseType] != this.candidates.cells[midCell2].houses[midHouseType]) continue;
+										// link confirmed
+										let removable;
+										for (let value of values) {
+											for (let houseType in this.candidates.cells[startCell].houses) {
+												for (let cell of this.candidates.cells[startCell].houses[houseType][value]) {
+													for (let crossHouseType in this.candidates.cells[cell].houses) {
+														if (this.candidates.cells[cell].houses[crossHouseType] != this.candidates.cells[endCell].houses[crossHouseType]) continue;
+														removable ||= {};
+														removable[cell] = true;
+													}
+												}
+											}
 										}
+										if (!removable) continue;
+										this.logs && this.log("W-Wing: cells["+[startCell,midCell1,midCell2,endCell]+"] values="+values);
+										for (let value of values) {
+											for (let cell in removable) {
+												if (this.removeCandidate(cell, value) == this.ERROR) return this.ERROR;
+											}
+										}
+										return this.OK;
 									}
-									return this.OK;
 								}
 							}
 						}
@@ -617,8 +725,10 @@ class SudokuSolver {
 let GRIDS = [
 "701408000000170408648000107307205000500701000800000070070800240080000000000030000", // nakedTriplet
 "400270600798156234020840007237468951849531726561792843082015479070024300004087002", // nakedTriplet
-"294513006600842319300697254000056000040080060000470000730164005900735001400928637", // NakedTriplet
-"000030086000020040090078520371856294900142375400397618200703859039205467700904132", // NakedQuad
+"294513006600842319300697254000056000040080060000470000730164005900735001400928637", // nakedTriplet
+"000030086000020040090078520371856294900142375400397618200703859039205467700904132", // nakedQuad
+"034590086802063450605408000003980564058604090946005800527316948381249675469857123", // YWing
+"080020007003517800057098030008970010719040008020801970891050740472109080635784000", // WWing, nakedTriplet
 ];
 
 function buildGrid(container, dim=9) {
@@ -626,12 +736,12 @@ function buildGrid(container, dim=9) {
 	container.classList.add("grid");
 	container.style.setProperty("--width", dim);
 	container.style.setProperty("--box", (w=>{ let h=Math.floor(Math.sqrt(w)); while (Math.floor(w/h) != w/h) h--; return w/h; })(dim));
+	container.style.setProperty("--candidate", (dim >= 16 ? 9 : 13)+"px");
 	
 	let cell = template.querySelector(".cell").cloneNode(true);
 	cell.querySelector("input").setAttribute("inputmode", dim<10 ? "numeric" : "text");
 	cell.querySelector("input").setAttribute("pattern", dim<10 ? "\\d" : "\\w");
 	cell.querySelector(".candidates").innerHTML = Array(dim).fill(0).map((_,i)=>"<div>"+(i+1).toString(36).toUpperCase()+"</div>").join("");
-	if (dim >= 16) cell.querySelector(".candidates").style.fontSize = "9px";
 	
 	for (let i=0 ; i<dim*dim ; i++) container.append(cell.cloneNode(true));
 
@@ -653,25 +763,23 @@ function readGrid(container) {
 	return Array.from(container.querySelectorAll(".cell input")).map(i=>i.value.toUpperCase()||0).join("");
 }
 function setGrid(container, data, readonly) {
-	data = data.toUpperCase().split("").map(i=>i=="0"||i==" "?null:i);
-	
 	let dim = Math.min(Math.max(Math.round(Math.sqrt(data.length)), 2), 35)
 	if (container.style.getPropertyValue("--width") != dim) buildGrid(container, dim);
 	let cells = container.querySelectorAll(".cell input");
-	cells.forEach((cell, i) => cell.value = data[i] || "");
-	if (readonly) cells.forEach((cell, i) => cell.disabled = data[i]!=null);
+	cells.forEach((cell, i) => cell.value = parseInt(data.charAt(i), 36) || "");
+	if (readonly) cells.forEach((cell, i) => cell.disabled = parseInt(data.charAt(i), 36)>0);
 	if (readonly) container.querySelectorAll(".candidates div").forEach(div => div.style.visibility = "");
 	container.querySelectorAll(".highlight").forEach(div => div.classList.remove("highlight", "set", "remove"));
 	
-	verifyButton.innerHTML = "Verify";
-	verifyButton.removeAttribute("disabled");
 	
 	if (container == grid) {
 		solver = null;
-		console.clear();
-		solveButton.removeAttribute("disabled");
-		stepButton.removeAttribute("disabled");
-		backButton.setAttribute("disabled", "");
+		textInput.value = data;
+		verifyButton.innerText = "Verify";
+		verifyButton.disabled = false;
+		resetButton.disabled = backButton.disabled = true;
+		stepButton.disabled = solveButton.disabled = false;
+		solveDuration.disabled = false;
 		solveDuration.value = log.value = "";
 	}
 }
@@ -689,8 +797,7 @@ function showSolverState(container, solver, diff) {
 	
 	let logs = solver.logs ? solver.logs.slice(state.logs.length) : [];
 	container.querySelectorAll(".highlight").forEach(div => div.classList.remove("highlight", "set", "remove"));
-	logs.slice(0,1)
-		.map(line => line.match(/(row|col|box)\[\d+\]/g))
+	logs.map(line => line.match(/(row|col|box)\[\d+\]/g))
 		.map(matches => matches && matches.map(house=>house.match(/(\w+)\[(\d+)\]/)))
 		.forEach(houses => houses && houses.forEach(house=>container.getElementsByClassName(house[1]+"s")[0].children[house[2]].classList.add("highlight")));
 	
@@ -713,12 +820,45 @@ function showSolverState(container, solver, diff) {
 		});
 }
 verifyButton.onclick = function() {
-	verifyButton.setAttribute("disabled", "");
+	verifyButton.disabled = true;
 	let solver = new SudokuSolver(readGrid(grid));
 	let solutions = solver.findAllSolutions(2).length;
-	verifyButton.innerHTML = solutions==0 ? "no solutions" : solutions==1 ? "unique solution" : "multiple solutions";
+	verifyButton.innerText = solutions==0 ? "no solution" : solutions==1 ? "unique solution" : "multiple solutions";
 }
 let solved; // used to simulate a virtual last step showing the grid completed.
+resetButton.onclick = function() {
+	setGrid(grid, textInput.value, true);
+	solved = false;
+}
+backButton.onclick = function() {
+	if (solver && solver.prevStates && solver.prevStates.length) {
+		if (!solved) solver.setCurrentState(solver.prevStates.pop());
+		solved = false;
+		showSolverState(grid, solver, true);
+		log.value = solver.logs.slice(solver.prevStates.length ? solver.prevStates[solver.prevStates.length-1].logs.length : 0).join("\r\n");
+		backButton.disabled = !solver.prevStates.length;
+		stepButton.disabled = solveButton.disabled = false;
+	}
+}
+stepButton.onclick = function() {
+	let response;
+	if (!solver) {
+		console.clear();
+		solver = new SudokuSolver(readGrid(grid), true);
+		response = solver.OK;
+		solved = solver.emptyCells == 0;
+		solveDuration.disabled = true;
+		solveDuration.value = "Disabled";
+	} else {
+		solved = solver.emptyCells == 0;
+		if (!solved) response = solver.step();
+	}
+	showSolverState(grid, solver, !solved);
+	log.value = (solved ? solver.logs.filter(line => line.charAt(0) == "#") : solver.logs.slice(solver.prevStates.length ? solver.prevStates[solver.prevStates.length-1].logs.length : 0)).join("\r\n");
+	resetButton.disabled = false;
+	backButton.disabled = !solver.prevStates.length;
+	stepButton.disabled = solveButton.disabled = solved || response == solver.ERROR;
+}
 solveButton.onclick = function() {
 	solver ||= new SudokuSolver(readGrid(grid));
 	let start = performance.now();
@@ -727,37 +867,11 @@ solveButton.onclick = function() {
 	
 	solved = true;
 	showSolverState(grid, solver);
-	solveButton.setAttribute("disabled", "");
-	stepButton.setAttribute("disabled", "");
-	if (solver.prevStates) backButton.removeAttribute("disabled");
 	log.value = solver.logs ? solver.logs.filter(line => line.charAt(0) == "#").join("\r\n") : "";
-	if (!solver.logs) solveDuration.value = "Solving duration: "+duration+"ms";
-}
-stepButton.onclick = function() {
-	let response;
-	if (!solver) {
-		solver = new SudokuSolver(readGrid(grid), true);
-		response = solver.OK;
-		solved = false;
-	} else {
-		solved = solver.emptyCells == 0;
-		if (!solved) response = solver.step();
-	}
-	showSolverState(grid, solver, !solved);
-	log.value = (solved ? solver.logs.filter(line => line.charAt(0) == "#") : solver.logs.slice(solver.prevStates.length ? solver.prevStates[solver.prevStates.length-1].logs.length : 0)).join("\r\n");
-	if (solved || response == solver.ERROR) stepButton.setAttribute("disabled", "");
-	if (solver.prevStates.length) backButton.removeAttribute("disabled");
-}
-backButton.onclick = function() {
-	if (solver && solver.prevStates && solver.prevStates.length) {
-		if (!solved) solver.setCurrentState(solver.prevStates.pop());
-		solved = false;
-		showSolverState(grid, solver, true);
-		log.value = solver.logs.slice(solver.prevStates.length ? solver.prevStates[solver.prevStates.length-1].logs.length : 0).join("\r\n");
-		solveButton.removeAttribute("disabled");
-		stepButton.removeAttribute("disabled");
-		if (!solver.prevStates.length) backButton.setAttribute("disabled", "");
-	}
+	resetButton.disabled = false;
+	backButton.disabled = !solver.prevStates;
+	stepButton.disabled = solveButton.disabled = true;
+	if (!solveDuration.disabled) solveDuration.value = Math.round(duration)+"ms";
 }
 
 function benchmark(functions, iterations = 1, iterationsTotal = 1) {
@@ -772,5 +886,5 @@ function benchmark(functions, iterations = 1, iterationsTotal = 1) {
 	for (name in functions) console.log(name+": "+(times[name]/iterationsTotal));
 }
 
-setGrid(grid, document.querySelector("select").value, true);
+setGrid(grid, textInput.value || select.value, true);
 </script>
