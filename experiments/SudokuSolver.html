@@ -78,7 +78,7 @@ body {
 .highlight.remove { box-shadow: inset 0 0 3px 2px Salmon; }
 
 option:checked { font-weight: bold; }
-p { display: flex; gap: .5em; }
+p { display: flex; gap: .5em; justify-content: center; }
 p input, select, button { padding: .5em 1em; }
 p input, p textarea { width: 1em; flex-grow: 1; }
 textarea { height: 10em; resize: vertical; }
@@ -116,7 +116,6 @@ textarea { height: 10em; resize: vertical; }
 	<button id=backButton disabled>&#9664; Back</button>
 	<button id=stepButton>&#9654; Step</button>
 	<button id=solveButton>&#9197; Solve</button>
-	<input id=solveDuration readonly placeholder="Solve duration"/>
 </p>
 <p>
 	<textarea id=log autocomplete="off" readonly></textarea>
@@ -767,8 +766,7 @@ function setGrid(container, data, readonly) {
 		verifyButton.disabled = false;
 		resetButton.disabled = backButton.disabled = true;
 		stepButton.disabled = solveButton.disabled = false;
-		solveDuration.disabled = false;
-		solveDuration.value = log.value = "";
+		log.value = "";
 	}
 }
 function showSolverState(container, solver, diff) {
@@ -835,8 +833,6 @@ stepButton.onclick = function() {
 		solver = new SudokuSolver(readGrid(grid), true);
 		response = solver.OK;
 		solved = solver.emptyCells == 0;
-		solveDuration.disabled = true;
-		solveDuration.value = "Disabled";
 	} else {
 		solved = solver.emptyCells == 0;
 		if (!solved) response = solver.step();
@@ -855,11 +851,10 @@ solveButton.onclick = function() {
 	
 	solved = true;
 	showSolverState(grid, solver);
-	log.value = solver.logs ? solver.logs.filter(line => line.charAt(0) == "#").join("\r\n") : "";
+	log.value = solver.logs ? solver.logs.filter(line => line.charAt(0) == "#").join("\r\n") : "Solving duration: "+Math.round(duration)+"ms";
 	resetButton.disabled = false;
 	backButton.disabled = !solver.prevStates;
 	stepButton.disabled = solveButton.disabled = true;
-	if (!solveDuration.disabled) solveDuration.value = Math.round(duration)+"ms";
 }
 
 function benchmark(functions, iterations = 1, iterationsTotal = 1) {
