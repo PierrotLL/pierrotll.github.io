@@ -139,15 +139,15 @@ class SudokuSolver {
 			this.hiddenPair,
 			this.intersectionRemoval,
 			this.nakedTriplet,
-			//this.hiddenTriplet,
+			this.hiddenTriplet,
 			this.XWing,
 			this.YWing,
 			this.WWing,
 			this.nakedQuad,
-			//this.hiddenQuad,
+			this.hiddenQuad,
 			this.backtracking
 		];
-		if (logs) { this.logs = []; this.prevStates = [] }
+		if (logs) this.logs = [], this.prevStates = [];
 		if (grid) this.init(grid);
 	}
 	
@@ -473,8 +473,7 @@ class SudokuSolver {
 	nakedSubset(n) {
 		let values, cells, cellsLength;
 		for (let cell in this.candidates.cells) {
-			let length = this.candidates.cells[cell].values.length;
-			if (length > n) continue;
+			if (this.candidates.cells[cell].values.length > n) continue;
 			for (let houseType in this.candidates.cells[cell].houses) {
 				if (this.candidates.subsets[houseType][cell]) continue;
 				let house = this.candidates.cells[cell].houses[houseType];
@@ -482,7 +481,7 @@ class SudokuSolver {
 				if (values) values.length = cells.length = 0; else values = [], cells = [];
 				values.push.apply(values, this.candidates.cells[cell].values);
 				cells.push(Number(cell));
-				values: for (let i=0 ; i<length ; i++) {
+				values: for (let i=0 ; i<values.length ; i++) {
 					siblings: for (let sibling of house[values[i]]) {
 						if (cells.includes(sibling)) continue;
 						let len = this.candidates.cells[sibling].values.length;
@@ -504,7 +503,7 @@ class SudokuSolver {
 					for (let j=house[values[i]].length-1 ; j>=0 ; j--) {
 						let c = house[values[i]][j];
 						if (cells.includes(c)) continue;
-						if (!removed) this.logs && this.log("nakedSubset: "+houseType+"["+this.candidates.houses[houseType].indexOf(house)+"] cells["+cells+"] values="+values);
+						if (!removed && this.logs) this.log("nakedSubset: "+houseType+"["+this.candidates.houses[houseType].indexOf(house)+"] cells["+cells+"] values="+values);
 						if (this.removeCandidate(c, values[i]) == this.ERROR) return this.ERROR;
 						removed = true;
 					}
@@ -517,32 +516,43 @@ class SudokuSolver {
 	hiddenTriplet() {
 		return this.hiddenSubset(3);
 	}
+	hiddenQuad() {
+		return this.hiddenSubset(4);
+	}
 	hiddenSubset(n) {
+		let values, cells, valuesLength;
 		for (let houseType in this.candidates.houses) {
 			for (let id in this.candidates.houses[houseType]) {
-				let lockedValues;
-				for (let value in this.candidates.houses[houseType][id]) {
-					let cells = this.candidates.houses[houseType][id][value];
-					if (cells.length <= n && !this.candidates.subsets[houseType][cells[0]]) {
-						lockedValues ||= [];
-						lockedValues.push(value);
-					}
-				}
-				if (lockedValues && lockedValues.length >= n) {
-					if (lockedValues.length > n) {
-					}
-					{
-						for (let cell in hiddenCells) {
-							for (let i = this.candidates.cells[cell].values.length-1 ; i>=0 ; i--) {
-								let v = this.candidates.cells[cell].values[i];
-								if (!lockedValues.includes(v) && this.removeCandidate(cell, v) == this.ERROR) return this.ERROR;
-							}
-							this.candidates.subsets[houseType][cell] = true;
+				let house = this.candidates.houses[houseType][id];
+				for (let value in house) {
+					if (house[value].length > n || this.candidates.subsets[houseType][house[value][0]]) continue;
+					valuesLength = 1;
+					if (values) values.length = cells.length = 0; else values = [], cells = [];
+					values.push(value);
+					cells.push.apply(cells, house[value]);
+					values: for (let value2 in house) {
+						if (value2 <= value || house[value2].length > n) continue;
+						for (let i=house[value2].length-1 ; i>=0 ; i--) {
+							if (cells.includes(house[value2][i]));
+							else if (cells.length < n) cells.push(house[value2][i]);
+							else continue values;
 						}
-						return this.OK;
+						values.push(value2);
+						valuesLength++;
+						if (valuesLength == n) break values;
 					}
+					if (valuesLength < n) continue;
+					this.logs && this.log("hiddenSubset: "+houseType+"["+id+"] cells["+cells+"] values="+values);
+					for (let i=0 ; i<n ; i++) {
+						this.candidates.subsets[houseType][cells[i]] = true;
+						for (let j=this.candidates.cells[cells[i]].values.length-1 ; j>=0 ; j--) {
+							let value = this.candidates.cells[cells[i]].values[j];
+							if (values.includes(value)) continue;
+							if (this.removeCandidate(cells[i], value) == this.ERROR) return this.ERROR;
+						}
+					}
+					return this.OK;
 				}
-				lockedValues = null;
 			}
 		}
 	}
@@ -583,6 +593,7 @@ class SudokuSolver {
 		}
 	}
 	
+	/* a cell with candidates AB share a house with a cell AC and another house with a cell BC => remove candidate C from cells at intersection between cells AC & BC */
 	YWing() {
 		for (let cellAB in this.candidates.cells) {
 			let values = this.candidates.cells[cellAB].values;
@@ -603,18 +614,15 @@ class SudokuSolver {
 							if (cellBC == cellAB || values.length != 2 || (values[0]!=C && values[1]!=C)) continue;
 							this.candidates.subsets[houseType1][cellAB] = this.candidates.subsets[houseType1][cellAC] = true;
 							this.candidates.subsets[houseType2][cellAB] = this.candidates.subsets[houseType2][cellBC] = true;
-							let removable;
-							for (let cell of this.candidates.cells[cellAC].houses[houseType2][C]) {
+							let removed;
+							for (let i=this.candidates.cells[cellAC].houses[houseType2][C].length-1 ; i>=0 ; i--) {
+								let cell = this.candidates.cells[cellAC].houses[houseType2][C][i];
 								if (cell == cellAC || cell == cellBC || this.candidates.cells[cell].houses[houseType1] != this.candidates.cells[cellBC].houses[houseType1]) continue;
-								removable ||= {};
-								removable[cell] = true;
-							}
-							if (!removable) continue;
-							this.logs && this.log("Y-Wing: cells["+cellAB+","+cellAC+","+cellBC+"] values="+A+","+B+","+C);
-							for (let cell in removable) {
+								if (!removed && this.logs) this.log("Y-Wing: cells["+cellAB+","+cellAC+","+cellBC+"] values="+A+","+B+","+C);
 								if (this.removeCandidate(cell, C) == this.ERROR) return this.ERROR;
+								removed = true;
 							}
-							return this.OK;
+							if (removed) return this.OK;
 						}
 					}
 				}
@@ -623,61 +631,67 @@ class SudokuSolver {
 	}
 	
 	WWing() {
-		let cellsWith2Candidates, n = 0;
-		for (let cell in this.candidates.cells) {
-			if (this.candidates.cells[cell].values.length != 2) continue;
-			cellsWith2Candidates ||= {};
-			cellsWith2Candidates[cell] = true;
-			n++;
-		}
-		if (n < 4) return;
-		for (let startCell in cellsWith2Candidates) {
-			let values = this.candidates.cells[startCell].values, numberCell1 = Number(startCell);
-			endCell: for (let endCell in cellsWith2Candidates) {
-				if (Number(endCell) <= numberCell1 || this.candidates.cells[endCell].values[0] != values[0] || this.candidates.cells[endCell].values[1] != values[1]) continue;
-				for (let houseType in this.candidates.cells[startCell].houses) { // make sure startCell and endCell are not in the same house
-					if (this.candidates.cells[startCell].houses[houseType] == this.candidates.cells[endCell].houses[houseType]) continue endCell;
-				}
-				let removable;
-				for (let i=0 ; i<2 ; i++) {
-					let value = values[i];
-					for (let startHouseType in this.candidates.cells[startCell].houses) {
-						let startHouse = this.candidates.cells[startCell].houses[startHouseType], len1 = startHouse[value].length;
-						for (let j=0 ; j<len1 ; j++) {
-							let midCell1 = startHouse[value][j];
-							if (midCell1 == startCell || !cellsWith2Candidates[midCell1]) continue;
-							for (let endHouseType in this.candidates.cells[endCell].houses) {
-								let endHouse = this.candidates.cells[endCell].houses[endHouseType], len2 = endHouse[value].length;
-								for (let k=0 ; k<len2 ; k++) {
-									let midCell2 = endHouse[value][k];
-									if (midCell2 == endCell || midCell2 == midCell1 || !cellsWith2Candidates[midCell2]) continue;
-									for (let midHouseType in this.candidates.cells[midCell1].houses) {
-										if (this.candidates.cells[midCell1].houses[midHouseType] != this.candidates.cells[midCell2].houses[midHouseType]) continue;
-										// link confirmed
-										let remove;
-										for (let houseType in this.candidates.cells[startCell].houses) {
-											for (let cell of this.candidates.cells[startCell].houses[houseType][values[1-i]]) {
-												for (let crossHouseType in this.candidates.cells[cell].houses) {
-													if (this.candidates.cells[cell].houses[crossHouseType] != this.candidates.cells[endCell].houses[crossHouseType]) continue;
-													(removable ||= {})[cell] ||= 0;
-													remove = !(removable[cell] & (2-i));
-													removable[cell] |= 2-i;
+		for (let startCell in this.candidates.cells) {
+			if (this.candidates.cells[startCell].values.length > 2) continue;
+			let values = this.candidates.cells[startCell].values;
+			for (let i=0 ; i<2 ; i++) {
+				for (let startHouseType in this.candidates.cells[startCell].houses) {
+					for (let midCell1 of this.candidates.cells[startCell].houses[startHouseType][values[i]]) {
+						if (midCell1 == startCell || this.candidates.cells[midCell1].values.length > 2) continue;
+						for (let midHouseType in this.candidates.cells[midCell1].houses) {
+							if (midHouseType == startHouseType || this.candidates.cells[midCell1].houses[midHouseType][values[i]].length > 2) continue; // strong link between mid cells
+							let cells = this.candidates.cells[midCell1].houses[midHouseType][values[i]],
+								midCell2 = cells[cells[0] == midCell1 ? 1 : 0];
+							if (midCell2 == startCell || this.candidates.cells[midCell2].values.length > 2) continue;
+							for (let endHouseType in this.candidates.cells[midCell2].houses) {
+								if (endHouseType == midHouseType) continue;
+								endCell: for (let endCell of this.candidates.cells[midCell2].houses[endHouseType][values[i]]) {
+									if (endCell == midCell2 || endCell == midCell1 || endCell == startCell || this.candidates.cells[endCell].values.length > 2 || this.candidates.cells[endCell].values[1-i] != this.candidates.cells[startCell].values[1-i]) continue;
+									for (let houseType in this.candidates.cells[startCell].houses) {
+										if (this.candidates.cells[startCell].houses[houseType] == this.candidates.cells[endCell].houses[houseType]) continue endCell;
+									}
+									
+									let doubleLink, midCell3, midCell4;
+									if (i == 0) {
+										doubleLink: for (let startHouseType2 in this.candidates.cells[startCell].houses) {
+											let cells = this.candidates.cells[startCell].houses[startHouseType2][values[1]];
+											midCell3 = cells[cells[0] == startCell ? 1 : 0];
+											for (let midHouseType2 in this.candidates.cells[midCell3].houses) {
+												if (midHouseType2 == startHouseType2 || this.candidates.cells[midCell3].houses[midHouseType2][values[1]].length > 2) continue;
+												let cells = this.candidates.cells[midCell3].houses[midHouseType2][values[1]];
+												midCell4 = cells[cells[0] == midCell3 ? 1 : 0];
+												for (let endHouseType2 in this.candidates.cells[midCell4].houses) {
+													if (endHouseType2 == midHouseType2 || this.candidates.cells[midCell4].houses[endHouseType2] != this.candidates.cells[endCell].houses[endHouseType2]) continue;
+													doubleLink = true;
+													break doubleLink;
 												}
 											}
 										}
-										if (!remove) continue;
-										this.logs && this.log("W-Wing: cells["+[startCell,midCell1,midCell2,endCell]+"] value="+value);
+									}
+									for (let houseType in this.candidates.cells[startCell].houses) {
+										for (let crossHouseType in this.candidates.cells[endCell].houses) {
+											if (crossHouseType == houseType) continue;
+											let removed;
+											for (let j = this.candidates.cells[startCell].houses[houseType][values[1-i]].length-1 ; j>=0 ; j--) {
+												let cell = this.candidates.cells[startCell].houses[houseType][values[1-i]][j];
+												if (this.candidates.cells[cell].houses[crossHouseType] != this.candidates.cells[endCell].houses[crossHouseType]) continue;
+												if (!removed && this.logs) {
+													if (doubleLink && (midCell3 != midCell1 || midCell4 != midCell2)) this.log("W-Wing: cells["+[startCell,midCell1,midCell2,midCell3,midCell4,endCell]+"] values="+values);
+													else this.log("W-Wing: cells["+[startCell,midCell1,midCell2,endCell]+"] values="+(doubleLink ? values : values[i]));
+												}
+												for (let k=0, l=doubleLink?2:1 ; k<l ; k++) {
+													if (this.removeCandidate(cell, values[1-i-k]) == this.ERROR) return this.ERROR;
+												}
+												removed = true;
+											}
+											if (removed) return this.OK;
+										}
 									}
 								}
 							}
 						}
 					}
 				}
-				if (!removable) continue;
-				for (let cell in removable) {
-					for (let i = 0 ; i<2 ; i++) if (removable[cell] & (1<<i) && this.removeCandidate(cell, values[i]) == this.ERROR) return this.ERROR;
-				}
-				return this.OK;
 			}
 		}
 	}
@@ -748,7 +762,7 @@ function setGrid(container, data, readonly) {
 	let dim = Math.min(Math.max(Math.round(Math.sqrt(data.length)), 2), 35)
 	if (container.style.getPropertyValue("--width") != dim) buildGrid(container, dim);
 	let cells = container.querySelectorAll(".cell input");
-	cells.forEach((cell, i) => cell.value = parseInt(data.charAt(i), 36) || "");
+	cells.forEach((cell, i) => cell.value = parseInt(data.charAt(i), 36) ? data.charAt(i) : "");
 	if (readonly) cells.forEach((cell, i) => cell.disabled = parseInt(data.charAt(i), 36)>0);
 	if (readonly) container.querySelectorAll(".candidates div").forEach(div => div.style.visibility = "");
 	container.querySelectorAll(".highlight").forEach(div => div.classList.remove("highlight", "set", "remove"));
