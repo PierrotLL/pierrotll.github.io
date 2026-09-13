@@ -73,9 +73,9 @@ body {
 .cols { grid-template-columns: repeat(var(--width), auto); }
 .rows { grid-template-columns: repeat(1, auto); }
 .boxs { grid-template-columns: repeat(calc(var(--width)/var(--box)), auto); }
-.highlight { box-shadow: inset 0 0 3px 2px DeepSkyBlue; }
-.highlight.set { box-shadow: inset 0 0 3px 2px Lime; }
-.highlight.remove { box-shadow: inset 0 0 3px 2px Salmon; }
+.highlight { --color: DeepSkyBlue; box-shadow: inset 0 0 3px 2px var(--color); }
+.highlight.set { --color: Lime; }
+.highlight.remove { --color: Salmon; }
 
 option:checked { font-weight: bold; }
 p { display: flex; gap: .5em; justify-content: center; }
