@@ -765,8 +765,8 @@ function setGrid(container, data, readonly) {
 	let dim = Math.min(Math.max(Math.round(Math.sqrt(data.length)), 2), 35)
 	if (container.style.getPropertyValue("--width") != dim) buildGrid(container, dim);
 	let cells = container.querySelectorAll(".cell input");
-	cells.forEach((cell, i) => cell.value = parseInt(data.charAt(i), 36) ? data.charAt(i) : "");
-	if (readonly) cells.forEach((cell, i) => cell.disabled = parseInt(data.charAt(i), 36)>0);
+	cells.forEach((cell, i) => cell.value = parseInt(data.charAt(i), dim+1) ? data.charAt(i).toUpperCase() : "");
+	if (readonly) cells.forEach((cell, i) => cell.disabled = parseInt(data.charAt(i), dim+1)>0);
 	if (readonly) container.querySelectorAll(".candidates div").forEach(div => div.style.visibility = "");
 	container.querySelectorAll(".highlight").forEach(div => div.classList.remove("highlight", "set", "remove"));
 	
