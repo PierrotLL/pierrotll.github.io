@@ -154,8 +154,8 @@ class SudokuSolver {
 	init(grid) {
 		if (this.logs) this.logs.length = 0;
 		this.log(" init");
-		this.grid = typeof(grid)=="string" || grid instanceof String ? grid.split("").map(i=>i=="0"||i==" "?null:i) : grid instanceof Array ? grid.map(i=>i?i.toString(36).toUpperCase():null) : [];
-		this.width = Math.min(Math.max(Math.round(Math.sqrt(this.grid.length)), 2), 35);
+		this.width = Math.min(Math.max(Math.round(Math.sqrt(grid && grid.length)), 2), 35);
+		this.grid = (typeof(grid)=="string" || grid instanceof String ? grid.split("") : grid instanceof Array ? grid : []).map(i => parseInt(i,this.width+1) ? parseInt(i,36).toString(36).toUpperCase() : null);
 		this.boxWidth = (w=>{ let h=Math.floor(Math.sqrt(w)); while (Math.floor(w/h) != w/h) h--; return w/h; })(this.width);
 		this.length = this.grid.length = this.width * this.width;
 		this.emptyCells = 0;
@@ -207,6 +207,7 @@ class SudokuSolver {
 				}
 			}
 		}
+		return this;
 	}
 	
 /********/
@@ -606,6 +607,7 @@ class SudokuSolver {
 					let cellAC = cells[i], values = this.candidates.cells[cellAC].values;
 					if (cellAC == cellAB || values.length != 2) continue;
 					let C = values[values[0] == A ? 1 : 0];
+					if (C == B) continue;
 					for (let houseType2 in this.candidates.cells[cellAB].houses) {
 						if (houseType1 == houseType2 || this.candidates.subsets[houseType2][cellAB]) continue;
 						let cells = this.candidates.cells[cellAB].houses[houseType2][B], len = cells.length;
@@ -660,6 +662,7 @@ class SudokuSolver {
 												if (midHouseType2 == startHouseType2 || this.candidates.cells[midCell3].houses[midHouseType2][values[1]].length > 2) continue;
 												let cells = this.candidates.cells[midCell3].houses[midHouseType2][values[1]];
 												midCell4 = cells[cells[0] == midCell3 ? 1 : 0];
+												if (midCell4 == endCell) continue;
 												for (let endHouseType2 in this.candidates.cells[midCell4].houses) {
 													if (endHouseType2 == midHouseType2 || this.candidates.cells[midCell4].houses[endHouseType2] != this.candidates.cells[endCell].houses[endHouseType2]) continue;
 													doubleLink = true;
@@ -879,4 +882,18 @@ function benchmark(functions, iterations = 1, iterationsTotal = 1) {
 }
 
 setGrid(grid, textInput.value || select.value, true);
+
+function load() {
+	fetch("https://raw.githubusercontent.com/grantm/sudoku-exchange-puzzle-bank/refs/heads/master/diabolical.txt")
+	.then(r => { if (r.ok) return r.text(); throw r.status; })
+	.then(txt => {
+		let grids = txt.split("\n").slice(0,10000).map(l=>l.split(" ")[1]), solver = new SudokuSolver();
+		console.log("errors:", grids.filter(s => solver.init(s).solve() == solver.ERROR));
+		while (solver.strategies.length >= 3) {
+			let times = grids.map(s => {let start=performance.now(); solver.init(s).solve(); return performance.now()-start});
+			console.log("strategies:"+solver.strategies.length, "total:"+times.reduce((a,t)=>a+t), "max:"+Math.max.apply(null, times), "min:"+Math.min.apply(null, times), "avg:"+times.reduce((a,t)=>a+t)/times.length);
+			solver.strategies.splice(solver.strategies.length-2, 1);
+		}
+	});
+}
 </script>
