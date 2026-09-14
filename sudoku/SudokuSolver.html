@@ -16,7 +16,7 @@ body {
 	--box: 3;
 	--cell: 50px;
 	--value: 32px;
-	--candidate: 13px;
+	--candidates: 13px;
 	--line: 1px;
 	--border: 3px;
 	gap: var(--line);
@@ -57,7 +57,7 @@ body {
 .cell input:focus { z-index: 4; }
 .cell input[disabled] { background: #eee; color: #000; }
 .cell input:placeholder-shown + .candidates { display: grid; }
-.candidates { display: none; grid-template-columns: repeat(var(--box), auto); grid-template-columns: repeat(round(up, sqrt(var(--width))), auto); font-size: var(--candidate); }
+.candidates { display: none; grid-template-columns: repeat(var(--box), auto); grid-template-columns: repeat(round(up, sqrt(var(--width))), auto); font-size: var(--candidates); }
 .candidates * { display: flex; align-items: center; justify-content: center; visibility: hidden; }
 
 .cols, .rows, .boxs {
@@ -143,6 +143,7 @@ class SudokuSolver {
 			this.XWing,
 			this.YWing,
 			this.WWing,
+			this.rectangleElimination,
 			this.nakedQuad,
 			this.hiddenQuad,
 			this.backtracking
@@ -425,11 +426,11 @@ class SudokuSolver {
 						for (let i=0 ; i<2 ; i++) {
 							let cell = house[value1][i],
 								values = this.candidates.cells[cell].values;
+							this.candidates.subsets[houseType][cell] = true;
 							for (let j=values.length-1 ; j>=0 ; j--) {
 								if (values[j] == value1 || values[j] == value2) continue;
 								if (this.removeCandidate(cell, values[j]) == this.ERROR) return this.ERROR;
 							}
-							this.candidates.subsets[houseType][cell] = true;
 						}
 						return this.OK;
 					}
@@ -472,24 +473,25 @@ class SudokuSolver {
 		return this.nakedSubset(4);
 	}
 	nakedSubset(n) {
-		let values, cells, cellsLength;
+		let values, valuesLength, cells, cellsLength;
 		for (let cell in this.candidates.cells) {
 			if (this.candidates.cells[cell].values.length > n) continue;
 			for (let houseType in this.candidates.cells[cell].houses) {
 				if (this.candidates.subsets[houseType][cell]) continue;
 				let house = this.candidates.cells[cell].houses[houseType];
-				cellsLength = 1;
 				if (values) values.length = cells.length = 0; else values = [], cells = [];
 				values.push.apply(values, this.candidates.cells[cell].values);
 				cells.push(Number(cell));
-				values: for (let i=0 ; i<values.length ; i++) {
-					siblings: for (let sibling of house[values[i]]) {
-						if (cells.includes(sibling)) continue;
-						let len = this.candidates.cells[sibling].values.length;
-						if (len > n) continue;
-						for (let j=0 ; j<len ; j++) {
-							if (values.includes(this.candidates.cells[sibling].values[j]));
-							else if (values.length < n) values.push(this.candidates.cells[sibling].values[j]);
+				valuesLength = values.length;
+				cellsLength = 1;
+				values: for (let i=0 ; i<valuesLength ; i++) {
+					siblings: for (let j=house[values[i]].length-1 ; j>=0 ; j--) {
+						let sibling = house[values[i]][j],
+							len = this.candidates.cells[sibling].values.length;
+						if (len > n || cells.includes(sibling)) continue;
+						for (let k=0 ; k<len ; k++) {
+							if (values.includes(this.candidates.cells[sibling].values[k]));
+							else if (valuesLength < n) values.push(this.candidates.cells[sibling].values[k]), valuesLength++;
 							else continue siblings;
 						}
 						cells.push(sibling);
@@ -498,14 +500,14 @@ class SudokuSolver {
 					}
 				}
 				if (cellsLength < n) continue;
-				for (let i=0 ; i<n ; i++) this.candidates.subsets[houseType][cells[i]] = true;
 				let removed;
 				for (let i=0 ; i<n ; i++) {
+					this.candidates.subsets[houseType][cells[i]] = true;
 					for (let j=house[values[i]].length-1 ; j>=0 ; j--) {
-						let c = house[values[i]][j];
-						if (cells.includes(c)) continue;
-						if (!removed && this.logs) this.log("nakedSubset: "+houseType+"["+this.candidates.houses[houseType].indexOf(house)+"] cells["+cells+"] values="+values);
-						if (this.removeCandidate(c, values[i]) == this.ERROR) return this.ERROR;
+						let cell = house[values[i]][j];
+						if (cells.includes(cell)) continue;
+						if (!removed && this.logs) this.log("naked"+["Triplet","Quad"][n-3]+": "+houseType+"["+this.candidates.houses[houseType].indexOf(house)+"] cells["+cells+"] values="+values);
+						if (this.removeCandidate(cell, values[i]) == this.ERROR) return this.ERROR;
 						removed = true;
 					}
 				}
@@ -521,29 +523,31 @@ class SudokuSolver {
 		return this.hiddenSubset(4);
 	}
 	hiddenSubset(n) {
-		let values, cells, valuesLength;
+		let values, valuesLength, cells, cellsLength;
 		for (let houseType in this.candidates.houses) {
 			for (let id in this.candidates.houses[houseType]) {
 				let house = this.candidates.houses[houseType][id];
 				for (let value in house) {
-					if (house[value].length > n || this.candidates.subsets[houseType][house[value][0]]) continue;
-					valuesLength = 1;
+					cellsLength = house[value].length;
+					if (cellsLength > n || this.candidates.subsets[houseType][house[value][0]]) continue;
 					if (values) values.length = cells.length = 0; else values = [], cells = [];
-					values.push(value);
 					cells.push.apply(cells, house[value]);
+					values.push(value);
+					valuesLength = 1;
 					values: for (let value2 in house) {
-						if (value2 <= value || house[value2].length > n) continue;
-						for (let i=house[value2].length-1 ; i>=0 ; i--) {
+						let l;
+						if (value2 <= value || (l=house[value2].length) > n) continue;
+						for (let i=l-1 ; i>=0 ; i--) {
 							if (cells.includes(house[value2][i]));
-							else if (cells.length < n) cells.push(house[value2][i]);
+							else if (cellsLength < n) cells.push(house[value2][i]), cellsLength++;
 							else continue values;
 						}
 						values.push(value2);
 						valuesLength++;
-						if (valuesLength == n) break values;
+						if (valuesLength == n) break;
 					}
 					if (valuesLength < n) continue;
-					this.logs && this.log("hiddenSubset: "+houseType+"["+id+"] cells["+cells+"] values="+values);
+					this.logs && this.log("hidden"+["Triplet","Quad"][n-3]+": "+houseType+"["+id+"] cells["+cells+"] values="+values);
 					for (let i=0 ; i<n ; i++) {
 						this.candidates.subsets[houseType][cells[i]] = true;
 						for (let j=this.candidates.cells[cells[i]].values.length-1 ; j>=0 ; j--) {
@@ -560,29 +564,31 @@ class SudokuSolver {
 	
 	/* if 2 parallel lines (rows or cols) have exactly 2 time the same candidate in the same perpendicular lines => remove candidate from others cells of the perpendicular lines */
 	XWing() {
-		for (let houseType in this.candidates.houses) {
-			if (houseType == "box") continue;
-			let crossLineType = houseType == "row" ? "col" : "row";
-			for (let id in this.candidates.houses[houseType]) {
-				let line1 = this.candidates.houses[houseType][id];
+		for (let lineType in this.candidates.houses) {
+			if (lineType == "box") continue;
+			let crossLineType = lineType == "row" ? "col" : "row";
+			for (let id in this.candidates.houses[lineType]) {
+				let line1 = this.candidates.houses[lineType][id];
 				for (let value in line1) {
 					if (line1[value].length != 2) continue;
 					let crossLine1 = this.candidates.cells[line1[value][0]].houses[crossLineType],
 						crossLine2 = this.candidates.cells[line1[value][1]].houses[crossLineType],
 						length1 = crossLine1[value].length, length2 = crossLine2[value].length;
 					if (length1 <= 2 && length2 <= 2) continue;
-					for (let cell of length1<length2 ? crossLine1[value] : crossLine2[value]) {
-						let line2 = this.candidates.cells[cell].houses[houseType];
+					let crossLine = length1 < length2 ? crossLine1 : crossLine2, length = length1 < length2 ? length1 : length2;
+					for (let i=length-1 ; i>=0 ; i--) {
+						let cell = crossLine[value][i],
+							line2 = this.candidates.cells[cell].houses[lineType];
 						if (line2 == line1 || line2[value].length != 2 ||
 							this.candidates.cells[line2[value][0]].houses[crossLineType] != crossLine1 ||
 							this.candidates.cells[line2[value][1]].houses[crossLineType] != crossLine2) continue;
 						
-						this.logs && this.log("X-Wing: "+houseType+"["+id+"] // "+houseType+"["+this.candidates.houses[houseType].indexOf(line2)+"] cells["+line1[value]+","+line2[value]+"] value="+value);
+						this.logs && this.log("X-Wing: "+lineType+"["+id+"] // "+lineType+"["+this.candidates.houses[lineType].indexOf(line2)+"] cells["+line1[value]+","+line2[value]+"] value="+value);
 						for (let cell of line1[value]) {
 							for (let i=this.candidates.cells[cell].houses[crossLineType][value].length-1 ; i>=0 ; i--) {
 								let cell2 = this.candidates.cells[cell].houses[crossLineType][value][i];
-								if (this.candidates.cells[cell2].houses[houseType] != line1 &&
-									this.candidates.cells[cell2].houses[houseType] != line2 &&
+								if (this.candidates.cells[cell2].houses[lineType] != line1 &&
+									this.candidates.cells[cell2].houses[lineType] != line2 &&
 									this.removeCandidate(cell2, value) == this.ERROR)
 										return this.ERROR;
 							}
@@ -601,7 +607,6 @@ class SudokuSolver {
 			if (values.length != 2) continue;
 			let A = values[0], B = values[1];
 			for (let houseType1 in this.candidates.cells[cellAB].houses) {
-				if (this.candidates.subsets[houseType1][cellAB]) continue;
 				let cells = this.candidates.cells[cellAB].houses[houseType1][A], len = cells.length;
 				for (let i=0 ; i<len ; i++ ) {
 					let cellAC = cells[i], values = this.candidates.cells[cellAC].values;
@@ -609,18 +614,16 @@ class SudokuSolver {
 					let C = values[values[0] == A ? 1 : 0];
 					if (C == B) continue;
 					for (let houseType2 in this.candidates.cells[cellAB].houses) {
-						if (houseType1 == houseType2 || this.candidates.subsets[houseType2][cellAB]) continue;
-						let cells = this.candidates.cells[cellAB].houses[houseType2][B], len = cells.length;
-						for (let i=0 ; i<len ; i++ ) {
+						if (houseType1 == houseType2) continue;
+						let cells = this.candidates.cells[cellAB].houses[houseType2][B];
+						for (let i=cells.length-1 ; i>=0 ; i--) {
 							let cellBC = cells[i], values = this.candidates.cells[cellBC].values;
 							if (cellBC == cellAB || values.length != 2 || (values[0]!=C && values[1]!=C)) continue;
-							this.candidates.subsets[houseType1][cellAB] = this.candidates.subsets[houseType1][cellAC] = true;
-							this.candidates.subsets[houseType2][cellAB] = this.candidates.subsets[houseType2][cellBC] = true;
 							let removed;
 							for (let i=this.candidates.cells[cellAC].houses[houseType2][C].length-1 ; i>=0 ; i--) {
 								let cell = this.candidates.cells[cellAC].houses[houseType2][C][i];
 								if (cell == cellAC || cell == cellBC || this.candidates.cells[cell].houses[houseType1] != this.candidates.cells[cellBC].houses[houseType1]) continue;
-								if (!removed && this.logs) this.log("Y-Wing: cells["+cellAB+","+cellAC+","+cellBC+"] values="+A+","+B+","+C);
+								if (!removed && this.logs) this.log("Y-Wing: cells["+[cellAB,cellAC,cellBC]+"] values="+[A,B,C]);
 								if (this.removeCandidate(cell, C) == this.ERROR) return this.ERROR;
 								removed = true;
 							}
@@ -699,6 +702,40 @@ class SudokuSolver {
 		}
 	}
 	
+	rectangleElimination() {
+		for (let lineType in this.candidates.houses) {
+			if (lineType == "box") continue;
+			let crossLineType = lineType == "row" ? "col" : "row";
+			for (let id in this.candidates.houses[lineType]) {
+				let line = this.candidates.houses[lineType][id];
+				for (let value in line) {
+					if (line[value].length > 2 || this.candidates.cells[line[value][0]].houses.box == this.candidates.cells[line[value][1]].houses.box) continue;
+					for (let i=0 ; i<2 ; i++) {
+						let crossLine = this.candidates.cells[line[value][i]].houses[crossLineType];
+						crossLine: for (let j=crossLine[value].length-1 ; j>=0 ; j--) {
+							if (this.candidates.cells[crossLine[value][j]].houses.box == this.candidates.cells[line[value][i]].houses.box) continue;
+							let line2 = this.candidates.cells[crossLine[value][j]].houses[lineType],
+								crossLine2 = this.candidates.cells[line[value][1-i]].houses[crossLineType],
+								len=crossLine2[value].length;
+							for (let k=line2[value].length-1 ; k>=0 ; k--) {
+								let box = this.candidates.cells[line2[value][k]].houses.box;
+								for (let l=len-1 ; l>=0 ; l--) {
+									if (this.candidates.cells[crossLine2[value][l]].houses.box != box) continue;
+									for (let m=box[value].length-1 ; m>=0 ; m--) {
+										if (this.candidates.cells[box[value][m]].houses[lineType] != line2 &&
+											this.candidates.cells[box[value][m]].houses[crossLineType] != crossLine2) continue crossLine;
+									}
+									this.logs && this.log("rectangleElimination: box["+this.candidates.houses.box.indexOf(box)+"] cells["+[line[value][i],line[value][1-i]]+"] value="+value);
+									return this.removeCandidate(crossLine[value][j], value);
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	
 	/* try first candidate of the cell with fewer candidates */
 	backtracking() {
 		let cell = this.fewerCandidates(), value = this.candidates.cells[cell].values[0];
@@ -723,10 +760,7 @@ class SudokuSolver {
 
 let GRIDS = [
 "701408000000170408648000107307205000500701000800000070070800240080000000000030000", // nakedTriplet
-"400270600798156234020840007237468951849531726561792843082015479070024300004087002", // nakedTriplet
-"294513006600842319300697254000056000040080060000470000730164005900735001400928637", // nakedTriplet
-"000030086000020040090078520371856294900142375400397618200703859039205467700904132", // nakedQuad
-"034590086802063450605408000003980564058604090946005800527316948381249675469857123", // YWing
+"400270600798156234020840007237468951849531726561792843082015479070024300004087002", // WWing
 "080020007003517800057098030008970010719040008020801970891050740472109080635784000", // WWing, nakedTriplet
 ];
 
@@ -735,7 +769,7 @@ function buildGrid(container, dim=9) {
 	container.classList.add("grid");
 	container.style.setProperty("--width", dim);
 	container.style.setProperty("--box", (w=>{ let h=Math.floor(Math.sqrt(w)); while (Math.floor(w/h) != w/h) h--; return w/h; })(dim));
-	container.style.setProperty("--candidate", (dim >= 16 ? 9 : 13)+"px");
+	container.style.setProperty("--candidates", (dim >= 16 ? 9 : 13)+"px");
 	
 	let cell = template.querySelector(".cell").cloneNode(true);
 	cell.querySelector("input").setAttribute("inputmode", dim<10 ? "numeric" : "text");
@@ -759,7 +793,7 @@ function cellArrowKeys(e) {
 	if (dx || dy && !i.disabled) { i.focus(); i.setSelectionRange(0,1); e.preventDefault(); }
 }
 function readGrid(container) {
-	return Array.from(container.querySelectorAll(".cell input")).map(i=>i.value.toUpperCase()||0).join("");
+	return Array.from(container.querySelectorAll(".cell input")).map(i=>i.value||0).join("");
 }
 function setGrid(container, data, readonly) {
 	let dim = Math.min(Math.max(Math.round(Math.sqrt(data.length)), 2), 35)
@@ -769,7 +803,6 @@ function setGrid(container, data, readonly) {
 	if (readonly) cells.forEach((cell, i) => cell.disabled = parseInt(data.charAt(i), dim+1)>0);
 	if (readonly) container.querySelectorAll(".candidates div").forEach(div => div.style.visibility = "");
 	container.querySelectorAll(".highlight").forEach(div => div.classList.remove("highlight", "set", "remove"));
-	
 	
 	if (container == grid) {
 		solver = null;
@@ -782,9 +815,9 @@ function setGrid(container, data, readonly) {
 	}
 }
 function showSolverState(container, solver, diff) {
+	let state = diff && solver.prevStates && solver.prevStates.length ? solver.prevStates[solver.prevStates.length-1] : solver;
 	let cells = container.querySelectorAll(".cell");
 	
-	let state = diff && solver.prevStates && solver.prevStates.length ? solver.prevStates[solver.prevStates.length-1] : solver;
 	cells.forEach((cell, i) => cell.getElementsByTagName("input")[0].value = state.grid[i] || "");
 	
 	cells.forEach((div, cell) =>
@@ -819,8 +852,7 @@ function showSolverState(container, solver, diff) {
 }
 verifyButton.onclick = function() {
 	verifyButton.disabled = true;
-	let solver = new SudokuSolver(readGrid(grid));
-	let solutions = solver.findAllSolutions(2).length;
+	let solutions = new SudokuSolver(readGrid(grid)).findAllSolutions(2).length;
 	verifyButton.innerText = solutions==0 ? "no solution" : solutions==1 ? "unique solution" : "multiple solutions";
 }
 let solved; // used to simulate a virtual last step showing the grid completed.
@@ -869,6 +901,8 @@ solveButton.onclick = function() {
 	stepButton.disabled = solveButton.disabled = true;
 }
 
+setGrid(grid, textInput.value || select.value, true);
+
 function benchmark(functions, iterations = 1, iterationsTotal = 1) {
 	let times = {}, i = iterationsTotal, name;
 	while(i--) {
@@ -880,18 +914,15 @@ function benchmark(functions, iterations = 1, iterationsTotal = 1) {
 	}
 	for (name in functions) console.log(name+": "+(times[name]/iterationsTotal));
 }
-
-setGrid(grid, textInput.value || select.value, true);
-
-function load() {
-	fetch("https://raw.githubusercontent.com/grantm/sudoku-exchange-puzzle-bank/refs/heads/master/diabolical.txt")
+function load(difficulty = "diabolical", quantity=1000, start=0) {
+	fetch("https://raw.githubusercontent.com/grantm/sudoku-exchange-puzzle-bank/refs/heads/master/"+difficulty+".txt")
 	.then(r => { if (r.ok) return r.text(); throw r.status; })
 	.then(txt => {
-		let grids = txt.split("\n").slice(0,10000).map(l=>l.split(" ")[1]), solver = new SudokuSolver();
+		let grids = txt.split("\n").slice(start, start+quantity).map(l=>l.split(" ")[1]), solver = new SudokuSolver();
 		console.log("errors:", grids.filter(s => solver.init(s).solve() == solver.ERROR));
 		while (solver.strategies.length >= 3) {
 			let times = grids.map(s => {let start=performance.now(); solver.init(s).solve(); return performance.now()-start});
-			console.log("strategies:"+solver.strategies.length, "total:"+times.reduce((a,t)=>a+t), "max:"+Math.max.apply(null, times), "min:"+Math.min.apply(null, times), "avg:"+times.reduce((a,t)=>a+t)/times.length);
+			console.log("strategies:"+solver.strategies.length, "total:"+times.reduce((a,t)=>a+t,0), "max:"+Math.max.apply(null, times), "min:"+Math.min.apply(null, times), "avg:"+times.reduce((a,t)=>a+t,0)/times.length);
 			solver.strategies.splice(solver.strategies.length-2, 1);
 		}
 	});
