@@ -266,7 +266,7 @@ option:checked { font-weight: bold }
 </body>
 
 <script>
-//(_=>{
+(_=>{
 openMenu.onclick = _=> [menu.style.maxHeight, openMenu.firstElementChild.style.rotate] = menu.style.maxHeight ? ['', ''] : ['16em', '45deg'];
 
 const AXIS = ["x", "y", "z"];
@@ -278,10 +278,10 @@ const FACES = [
 	{name:"left", x:-1, y:0, z:0, color:"green"},
 	{name:"right", x:1, y:0, z:0, color:"blue"}];
 
-const pieces = new Map();
+const pieces = [];
 function buildCube(size) {
 	cube.innerHTML = "";
-	pieces.clear();
+	pieces.length = 0;
 	cube.style.fontSize = 1/size+"em";
 	cube.classList.remove("flat");
 	let max = Math.floor(size-1)/2;
@@ -299,7 +299,7 @@ function buildCube(size) {
 							face.appendChild(document.createElement("div")).className = "sticker "+f.color;
 						}
 					});
-					pieces.set(piece, {e:piece, x:x, y:y, z:z});
+					pieces.push({e:piece, x:x, y:y, z:z});
 				}
 			}
 		}
@@ -313,7 +313,7 @@ cubeSize.onchange = _=> {
 	helper.hide();
 }
 function getMaxCoord() {
-	return Math.abs(pieces.values().next().value.x);
+	return Math.abs(pieces[0].x);
 }
 function getCubeSize() {
 	return getMaxCoord()*2+1;
@@ -321,12 +321,12 @@ function getCubeSize() {
 function getPieces(selector) {
 	if (!selector) return pieces;
 	if (selector[0] instanceof Array) return selector.map(getPieces).flat();
-	return Array.from(pieces.values()).filter(o=>o[selector[0]]==selector[1]);
+	return pieces.filter(o=>o[selector[0]]==selector[1]);
 }
 let previousVisible;
 function updatePiecesVisibility(visible) {
 	let max = getMaxCoord();
-	if (!visible || !previousVisible) pieces.forEach(p=>p.e.hidden = !visible && (tilt<0?p.y>-max:p.y<max) && (rotation>0?p.x>-max:p.x<max) && (rotation<-90||rotation>90?p.z>-max:p.z<max));
+	if (!visible || !previousVisible) pieces.forEach(p=>p.e.hidden = !visible && p.y!=(tilt<0?-max:max) && p.x!=(rotation>0?-max:max) && p.z!=(rotation<-90||rotation>90?-max:max));
 	previousVisible = visible;
 }
 
@@ -365,7 +365,7 @@ function touchmove(e) {
 			touch.axis ||= Math.hypot.apply(null, vector)*pxToAngle > 5 ? getMoveAxis(touch.face.classList[1], vector) : null;
 			if (touch.axis) {
 				finishAnimation();
-				touch.selector ||= [ touch.axis[0], pieces.get(touch.face.parentElement)[touch.axis[0]] ];
+				touch.selector ||= [ touch.axis[0], getPieces(["e",touch.face.parentElement])[0][touch.axis[0]] ];
 				touch.pieces ||= getPieces(touch.selector);
 				touch.lastAngle = vector[touch.axis[1]] * touch.axis[2] * pxToAngle;
 				cancelAnimationFrame(touch.animation);
@@ -617,9 +617,10 @@ forward.onclick = history.forward;
 
 
 function getOrderedStickers() {
-	let stickers = Array.from(cube.getElementsByClassName("sticker")), coord = new Map();
-	stickers.forEach(s => coord.set(s, pieces.get(s.parentElement.parentElement)));
-	return stickers.sort((a, b) => coord.get(a).x-coord.get(b).x || coord.get(a).y-coord.get(b).y || coord.get(a).z-coord.get(b).z || a.parentElement.classList[1].charCodeAt(0)-b.parentElement.classList[1].charCodeAt(0));
+	let stickers = Array.from(cube.getElementsByClassName("sticker")), map = new Map();
+	pieces.forEach(p => map.set(p.e, p));
+	stickers.forEach(s => map.set(s, map.get(s.parentElement.parentElement)));
+	return stickers.sort((a, b) => map.get(a).x-map.get(b).x || map.get(a).y-map.get(b).y || map.get(a).z-map.get(b).z || a.parentElement.classList[1].charCodeAt(0)-b.parentElement.classList[1].charCodeAt(0));
 }
 const save = {
 	timeout: null,
@@ -806,14 +807,5 @@ class Ease {
 	static easeOutCubic = t=>1-(1-t)**3;
 	static easeInOutCubic = t=>t<.5 ? 4*t**3 : 1-(-2*t+2)**3/2;
 }
-//})();
-
-
-function benchmark(functions, iterations) {
-	for (let name in functions) {
-		let i=iterations, fn = functions[name], start = performance.now();
-		while(i--) fn();
-		console.log(name, performance.now() - start);
-	}
-}
+})();
 </script>
