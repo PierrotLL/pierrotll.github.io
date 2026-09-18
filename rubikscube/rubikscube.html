@@ -8,7 +8,7 @@
 <link rel="manifest" href="rubikscube.webmanifest" />
 <script>if (navigator.serviceWorker) navigator.serviceWorker.register("rubikscube-sw.js");</script>
 <script src="../pwaInstallButton.js"></script>
-<script src=" https://cdn.jsdelivr.net/npm/@easy-pwa/beforeinstallprompt-polyfill@1.0.0-BETA1/dist/beforeinstallprompt-polyfill.min.js "></script>
+<script src="https://cdn.jsdelivr.net/npm/@easy-pwa/beforeinstallprompt-polyfill@1.0.0-BETA1/dist/beforeinstallprompt-polyfill.min.js"></script>
 
 <style>
 html { height: 100% }
@@ -323,6 +323,12 @@ function getPieces(selector) {
 	if (selector[0] instanceof Array) return selector.map(getPieces).flat();
 	return Array.from(pieces.values()).filter(o=>o[selector[0]]==selector[1]);
 }
+let previousVisible;
+function updatePiecesVisibility(visible) {
+	let max = getMaxCoord();
+	if (!visible || !previousVisible) pieces.forEach(p=>p.e.hidden = !visible && (tilt<0?p.y>-max:p.y<max) && (rotation>0?p.x>-max:p.x<max) && (rotation<-90||rotation>90?p.z>-max:p.z<max));
+	previousVisible = visible;
+}
 
 ["mousedown", "touchstart"].forEach(type => scene.addEventListener(type, touchstart));
 ["mousemove", "touchmove"].forEach(type => addEventListener(type, touchmove, {passive: false}));
@@ -362,10 +368,6 @@ function touchmove(e) {
 				touch.selector ||= [ touch.axis[0], pieces.get(touch.face.parentElement)[touch.axis[0]] ];
 				touch.pieces ||= getPieces(touch.selector);
 				touch.lastAngle = vector[touch.axis[1]] * touch.axis[2] * pxToAngle;
-				
-				//rotatePiecesTemporarily(touch.pieces, touch.axis[0], touch.lastAngle);
-				/*	Brower may fire multiple move events in a single frame.
-					The following lines ensure rotatePiecesTemporarily is called only once before next rendering. */
 				cancelAnimationFrame(touch.animation);
 				touch.animation = requestAnimationFrame(_=> rotatePiecesTemporarily(touch.pieces, touch.axis[0], touch.lastAngle));
 			}
@@ -415,7 +417,7 @@ function rotateCube(x, y, s) {
 	tilt = Math.min(Math.max(y, -90), 90);
 	scale = Math.min(Math.max(s, .5), 1.5);
 	cancelAnimationFrame(touch.animation);
-	touch.animation = requestAnimationFrame(_=> scene.style = "--rx:"+tilt+"deg;--ry:"+rotation+"deg;--sc:"+scale);
+	touch.animation = requestAnimationFrame(_=> scene.style = "--rx:"+tilt+"deg;--ry:"+rotation+"deg;--sc:"+scale, updatePiecesVisibility());
 }
 rotateCube(-22.5, -22.5, 1);
 
@@ -442,6 +444,7 @@ function getFacesSwap(axis, angle) {
 function rotatePiecesTemporarily(pieces, axis, angle) {
 	let property = "--r"+axis, value = angle ? normalizeAngle(angle)+"deg" : null;
 	pieces.forEach(p=>p.e.style.setProperty(property, value));
+	updatePiecesVisibility(angle != 0);
 }
 
 function rotatePiecesPermanently(pieces, axis, angle) {
@@ -454,6 +457,7 @@ function rotatePiecesPermanently(pieces, axis, angle) {
 		let stickers = Object.fromEntries(Array.from(p.e.getElementsByClassName("sticker")).map(sticker => [sticker.parentElement.classList[1], sticker]));
 		p.e.childNodes.forEach(face => { let f = face.classList[1], s = swap[f]!=f ? stickers[swap[f]] : null; s && face.append(s); });
 	});
+	updatePiecesVisibility();
 }
 
 let animation;
