@@ -40,7 +40,7 @@ body {
 #scene > div { will-change: transform }
 
 #cube {
-	position: fixed;
+	position: absolute;
 	top: 50%;
 	left: 50%;
 	transform: rotateX(var(--rx)) rotateY(var(--ry)) scale3d(var(--sc),var(--sc),var(--sc));
@@ -99,7 +99,7 @@ body {
 
 #compass {
 	pointer-events: none;
-	position: fixed;
+	position: absolute;
 	bottom: 1rem;
 	left: 50%;
 	translate: -50%;
