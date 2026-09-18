@@ -269,7 +269,6 @@ option:checked { font-weight: bold }
 (_=>{
 openMenu.onclick = _=> [menu.style.maxHeight, openMenu.firstElementChild.style.rotate] = menu.style.maxHeight ? ['', ''] : ['16em', '45deg'];
 
-const AXIS = ["x", "y", "z"];
 const FACES = [
 	{name:"up", x:0, y:-1, z:0, color:"red"},
 	{name:"down", x:0, y:1, z:0, color:"orange"},
@@ -281,27 +280,23 @@ const FACES = [
 const pieces = [];
 function buildCube(size) {
 	cube.innerHTML = "";
-	pieces.length = 0;
 	cube.style.fontSize = 1/size+"em";
 	cube.classList.remove("flat");
+	pieces.length = 0;
 	let max = Math.floor(size-1)/2;
-	for (let x=-max ; x<=max ; x++) {
-		for (let y=-max ; y<=max ; y++) {
-			for (let z=-max ; z<=max ; z++) {
-				if (Math.abs(x)==max || Math.abs(y)==max || Math.abs(z)==max) {
-					let piece = cube.appendChild(document.createElement("div"));
-					piece.className = "piece";
-					piece.style = "--x:"+x+"em;--y:"+y+"em;--z:"+z+"em";
-					FACES.forEach(f => {
-						let face = piece.appendChild(document.createElement("div"));
-						face.className = "face "+f.name;
-						if ((x && x == f.x*max) || (y && y == f.y*max) || (z && z == f.z*max)) {
-							face.appendChild(document.createElement("div")).className = "sticker "+f.color;
-						}
-					});
-					pieces.push({e:piece, x:x, y:y, z:z});
+	for (let x=-max, y=-max, z=-max ; z<=max ; ++x>max ? ++y>max ? (++z, x=y=-max) : x=-max : 0) {
+		if (Math.abs(x)==max || Math.abs(y)==max || Math.abs(z)==max) {
+			let piece = cube.appendChild(document.createElement("div"));
+			piece.className = "piece";
+			piece.style = "--x:"+x+"em;--y:"+y+"em;--z:"+z+"em";
+			FACES.forEach(f => {
+				let face = piece.appendChild(document.createElement("div"));
+				face.className = "face "+f.name;
+				if ((x && x == f.x*max) || (y && y == f.y*max) || (z && z == f.z*max)) {
+					face.appendChild(document.createElement("div")).className = "sticker "+f.color;
 				}
-			}
+			});
+			pieces.push({e:piece, x:x, y:y, z:z});
 		}
 	}
 }
@@ -367,9 +362,9 @@ function touchmove(e) {
 				finishAnimation();
 				touch.selector ||= [ touch.axis[0], getPieces(["e",touch.face.parentElement])[0][touch.axis[0]] ];
 				touch.pieces ||= getPieces(touch.selector);
-				touch.lastAngle = vector[touch.axis[1]] * touch.axis[2] * pxToAngle;
+				touch.piecesRotation = vector[touch.axis[1]] * touch.axis[2] * pxToAngle;
 				cancelAnimationFrame(touch.animation);
-				touch.animation = requestAnimationFrame(_=> rotatePiecesTemporarily(touch.pieces, touch.axis[0], touch.lastAngle));
+				touch.animation = requestAnimationFrame(_=> rotatePiecesTemporarily(touch.pieces, touch.axis[0], touch.piecesRotation));
 			}
 		} else {
 			rotateCube(rotation + (e.x - touch.lastX) * pxToAngle, tilt - (e.y - touch.lastY) * pxToAngle, scale);
@@ -380,9 +375,9 @@ function touchmove(e) {
 }
 function touchend(e) {
 	if (touch.axis) {
-		let toAngle = Math.round(touch.lastAngle / 90)*90;
+		let toAngle = Math.round(touch.piecesRotation / 90)*90;
 		cancelAnimationFrame(touch.animation);
-		rotatePiecesAnimated(touch.pieces, touch.axis[0], touch.lastAngle, toAngle, .1, Ease.easeInCubic);
+		rotatePiecesAnimated(touch.pieces, touch.axis[0], touch.piecesRotation, toAngle, .1, Ease.easeInCubic);
 		toAngle = normalizeAngle(toAngle);
 		if (toAngle) history.add(getMoveName(touch.selector, toAngle));
 	}
@@ -425,6 +420,7 @@ function screenToSceneVector(dx, dy) {
 	return Vector.rotateY(Vector.rotateX([dx, dy, 0], -tilt*DEG_TO_RAD), -rotation*DEG_TO_RAD);
 }
 
+const AXIS = ["x", "y", "z"];
 function getMoveAxis(face, vector) { // return [ axis name (x|y|z), scene vector component to use for rotation angle (0|1|2), vector component factor (-1|1) ]
 	let axis = { up:[0,2],down:[2,0], front:[0,1],back:[1,0], left:[2,1],right:[1,2] }[face];
 	return Math.abs(vector[axis[0]]) > Math.abs(vector[axis[1]]) ? [AXIS[axis[1]], axis[0], 1] : [AXIS[axis[0]], axis[1], -1];
@@ -465,14 +461,11 @@ function rotatePiecesAnimated(pieces, axis, fromAngle, toAngle, duration, ease) 
 	if (!duration) return rotatePiecesPermanently(pieces, axis, toAngle);
 	let start = performance.now(), end = start + duration*1e3;
 	function frame(now) {
-		let progress = Math.min((now-start)/(end-start), 1);
+		let progress = (now-start)/(end-start);
 		if (progress < 1) {
 			rotatePiecesTemporarily(pieces, axis, fromAngle + (toAngle-fromAngle) * ease(progress));
 			animation.id = requestAnimationFrame(frame);
-		} else {
-			finishAnimation();
-			if (navigator.vibrate) navigator.vibrate(10);
-		}
+		} else finishAnimation();
 	}
 	animation = { id:requestAnimationFrame(frame), pieces:pieces, axis:axis, toAngle:toAngle };
 }
@@ -514,7 +507,7 @@ function parseInput(str) {
 	else if (cubeSize == 3) str = str.replaceAll(/([LRUDBF])w/gi, (_,l)=>l.toLowerCase()); // for 3x3x3 r means Rw
 	else str = str.replace(/([lrudbf])w/g, (_,l)=>l.toUpperCase()+"w"); // rw is equivalent to Rw
 	while (str.match(/\([^\(\)]+\)['\d]/)) { // nested groups
-		str = str.replaceAll(/\(([^\(\)]+)\)('|\d+)/g, (_,s,n)=>parseInt(n) ? s.repeat(n) : s.match(moveRegex).map(reverseMove).join(""));
+		str = str.replaceAll(/\(([^\(\)]+)\)('|\d+)/g, (_,s,n)=>n=="'" ? s.match(moveRegex).map(reverseMove).join("") : s.repeat(n));
 	}
 	applyMoves(str);
 }
@@ -553,7 +546,7 @@ function applyMoves(str, duration=.4) {
 		let selector;
 		if ("xyz".includes(letter));
 		else if ("mes".includes(letter)) selector = Array.from({length:max*2},(_,i)=> [ axis, i-max + (i<max ? 0:1) ]);
-		else if (wide) selector = Array.from({length:depth}, (_,i)=> [axis, (max-i)*coord]);
+		else if (wide) selector = Array.from({length:depth}, (_,i)=> [ axis, (max-i)*coord ]);
 		else selector = [axis, coord*(max-depth+1)];
 		if (modifier) angle *= modifier==2 ? 2 : -1;
 		
