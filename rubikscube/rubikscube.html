@@ -36,8 +36,8 @@ body {
 	background: radial-gradient(circle at 50% calc(50% + 15vmin), #999, #000);
 	cursor: move;
 }
-#scene div { transform-style: preserve-3d }
-#scene > div { will-change: transform }
+#scene * { transform-style: preserve-3d }
+#scene > * { will-change: transform }
 
 #cube {
 	position: absolute;
@@ -67,7 +67,7 @@ body {
 .front { transform: translateZ(.5em) }
 .left { transform: rotateY(-90deg) translateZ(.5em) }
 .right { transform: rotateY(90deg) translateZ(.5em) }
-.up:before, .back:before, .left:before { /* block view through border-radius */
+.up:before, .back:before, .left:before { /* prevent seeing through border-radius */
 	content: "";
 	position: absolute;
 	width: 100%;
@@ -82,8 +82,8 @@ body {
 	border-radius: 15%;
 	backface-visibility: hidden;
 	transform: translateZ(1px);
-	box-shadow: inset .02em .02em .05em rgba(255,255,255,.5), inset -.02em -.02em .05em rgba(0,0,0,.5);
-    outline: 1px solid transparent; /* webkit aliasing */
+	box-shadow: inset .02em .02em .05em #FFFFFF80, inset -.02em -.02em .05em #00000080;
+    outline: inherit;
 }
 .red { background: red }
 .orange { background: orange }
@@ -94,7 +94,7 @@ body {
 
 .flat .face { border-radius: 0; backface-visibility: hidden; outline: unset; }
 .flat :before { display: none; }
-.flat .sticker { box-shadow: unset; outline: unset; }
+.flat .sticker { box-shadow: unset; }
 .flat + #compass { outline: unset; }
 
 #compass {
@@ -107,10 +107,10 @@ body {
 	aspect-ratio: 1;
 	z-index: -1;
 	background: linear-gradient(45deg, #55f, #009 50%, #600 50%, #e00);
-    outline: 1px solid transparent; /* webkit aliasing */
+    outline: 1px solid transparent;
 	transform: rotateX(var(--rx)) rotateY(var(--ry)) scale3d(.15,.15,sin(45deg)) rotate3d(-1,-1,0,-90deg);
 }
-#compass:before, #compass:after, #compass > div, #compass > div:after {
+#compass:before, #compass:after, #compass *, #compass *:after {
 	content: "";
 	position: absolute;
 	width: 100%;
@@ -120,15 +120,15 @@ body {
 }
 #compass:before { transform: rotate3d(-1,1,0,60deg) }
 #compass:after { transform: rotate3d(-1,1,0,120deg) }
-#compass > div, #compass > div:after {
+#compass *, #compass *:after {
 	border-radius: 50%;
 	backface-visibility: hidden;
 }
-#compass div {
+#compass * {
 	background: #009;
 	transform: rotate3d(1,1,0,-90deg) scale(calc(1/sin(45deg)));
 }
-#compass div:after {
+#compass *:after {
 	background: #600;
 	transform: rotateX(180deg);
 }
@@ -142,7 +142,7 @@ body {
 	contain: paint;
 }
 #menu, #openMenu * { transition: .4s }
-#menu div, #menu form { display: flex; gap: .3em }
+#menu > * { display: flex; gap: .3em }
 select, input[type="text"] { width: 9em }
 #menu * button { flex-grow: 1 }
 label {
@@ -183,12 +183,12 @@ option:checked { font-weight: bold }
 	font-weight: bold;
 	width: calc(2em / 1.5 - 2px);
 }
-#helpButton > div {
+#helpButton .wrapper {
 	max-width: calc(var(--max-width) - 2em);
 	max-height: 10em;
 	transition: max-width .5s, max-height .5s .3s;
 }
-#helpButton > div:has(#help:empty) {
+#helpButton .wrapper:has(#help:empty) {
 	max-width: 0;
 	max-height: calc(2em - 2px);
 }
@@ -208,7 +208,7 @@ option:checked { font-weight: bold }
 	position: fixed;
 	top: 0;
 	right: 0;
-	color: grey;
+	color: #888;
 	font: .75em monospace;
 }
 #fps:before { content: "FPS:" }
@@ -262,7 +262,7 @@ option:checked { font-weight: bold }
 	</div>
 	<div id=fps></div>
 	<div id=saveIcon></div>
-	<button id=helpButton><div><div id=help></div></div></button>
+	<button id=helpButton><div class=wrapper><div id=help></div></div></button>
 </body>
 
 <script>
@@ -328,6 +328,7 @@ function updatePiecesVisibility(visible) {
 ["mousedown", "touchstart"].forEach(type => scene.addEventListener(type, touchstart));
 ["mousemove", "touchmove"].forEach(type => addEventListener(type, touchmove, {passive: false}));
 ["mouseup", "click", "touchend", "touchcancel"].forEach(type => addEventListener(type, touchend));
+scene.addEventListener("wheel", e => rotateCube(rotation, tilt, scale - e.deltaY * .001));
 
 const touch = {};
 function touchstart(e) {
@@ -378,13 +379,11 @@ function touchend(e) {
 		let toAngle = Math.round(touch.piecesRotation / 90)*90;
 		cancelAnimationFrame(touch.animation);
 		rotatePiecesAnimated(touch.pieces, touch.axis[0], touch.piecesRotation, toAngle, .1, Ease.easeInCubic);
-		toAngle = normalizeAngle(toAngle);
-		if (toAngle) history.add(getMoveName(touch.selector, toAngle));
+		if (toAngle % 360) history.add(getMoveName(touch.selector, normalizeAngle(toAngle)));
 	}
 	touch.down = touch.face = touch.axis = touch.selector = touch.pieces = null;
 	document.body.classList.remove("grabbing");
 }
-addEventListener("wheel", e => rotateCube(rotation, tilt, scale - e.deltaY * .001));
 
 onkeydown = e => {
 	if (e.target != document.body || e.ctrlKey || e.metaKey) return;
@@ -421,8 +420,9 @@ function screenToSceneVector(dx, dy) {
 }
 
 const AXIS = ["x", "y", "z"];
+const FACES_AXIS = { up:[0,2],down:[2,0], front:[0,1],back:[1,0], left:[2,1],right:[1,2] };
 function getMoveAxis(face, vector) { // return [ axis name (x|y|z), scene vector component to use for rotation angle (0|1|2), vector component factor (-1|1) ]
-	let axis = { up:[0,2],down:[2,0], front:[0,1],back:[1,0], left:[2,1],right:[1,2] }[face];
+	let axis = FACES_AXIS[face];
 	return Math.abs(vector[axis[0]]) > Math.abs(vector[axis[1]]) ? [AXIS[axis[1]], axis[0], 1] : [AXIS[axis[0]], axis[1], -1];
 }
 
@@ -444,7 +444,7 @@ function rotatePiecesTemporarily(pieces, axis, angle) {
 }
 
 function rotatePiecesPermanently(pieces, axis, angle) {
-	if (normalizeAngle(angle) == 0) return rotatePiecesTemporarily(pieces, axis, 0);
+	if (angle % 360 == 0) return rotatePiecesTemporarily(pieces, axis, 0);
 	let swap = getFacesSwap(axis, angle);
 	pieces.forEach(p => {
 		let vector = Vector["rotate"+axis.toUpperCase()]([p.x,p.y,p.z], angle*DEG_TO_RAD).map(i=>Math.round(i*2)/2);
