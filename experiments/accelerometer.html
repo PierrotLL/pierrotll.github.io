@@ -1,0 +1,94 @@
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no,interactive-widget=resizes-content" />
+<style>
+body {
+	margin: 0;
+	height: 100svh;
+	contain: strict;
+}
+#scene {
+	height: 100%;
+	transform-style: preserve-3d;
+	perspective: 800px;
+}
+.ball {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	translate: -50% -50%;
+	aspect-ratio: 1;
+	border-radius: 50%;
+	background:
+		radial-gradient(circle at 33% 33%, #00000000 50%, #000000ff),
+		radial-gradient(circle at 33% 33%, var(--color), #000);
+}
+</style>
+<div id=scene>
+</div>
+	<div class=ball style="width:410px; --color:pink; z-index:1; opacity:.5;"></div>
+<script>
+let balls = [];
+for (let i=0 ; i<20 ; i++) {
+	let ball = document.createElement("div"), radius=20;
+	ball.className = "ball";
+	ball.style = "width:"+radius*2+"px; --color:hsl("+Math.random()*360+" 100% 30%)";
+	let x=Math.random(), y=Math.random(), z=Math.random(), l=Math.hypot(x,y,z);
+	scene.prepend(ball);
+	balls.push({e:ball, radius:radius, mass:radius**1.5, x:x*150/l, y:y*150/l, z:z*150/l, dx:0, dy:0, dz:0});
+}
+let accel={x:0,y:8,z:0}, last=0, radius=200;
+addEventListener("devicemotion", e=>accel = e.accelerationIncludingGravity);
+function frame(now) {
+	let ms = now-last;
+	if (ms > 50) ms=1;
+	for (let i=0, l=balls.length ; i<l ; i++) {
+		let b = balls[i];
+		if (accel) {
+			b.dx -= accel.x * ms * .02;
+			b.dy += accel.y * ms * .02;
+			b.dz -= accel.z * ms * .02;
+		}
+		let px=b.x, py=b.y, pz=b.z;
+		b.x += b.dx;
+		b.y += b.dy;
+		b.z += b.dz;
+		for (let j=i+1 ; j<l ; j++) {
+			let b2 = balls[j],
+				dx = b2.x-b.x,
+				dy = b2.y-b.y,
+				dz = b2.z-b.z,
+				d = Math.hypot(dx, dy, dz);
+				d2 = b.radius + b2.radius;
+			if (d < d2) {
+				b.x = b2.x - dx * d2/d;
+				b.y = b2.y - dy * d2/d;
+				b.z = b2.z - dz * d2/d;
+				/*let nx = (b.x-b2.x)/d2,
+					ny = (b.y-b2.y)/d2,
+					nz = (b.z-b2.z)/d2,
+					v = 2 * (b.dx*nx + b.dy*ny + b.dz*nz - b2.dx*nx - b2.dy*ny - b2.dz*nz) / (b.mass+b2.mass);
+				b.dx  -= v*nx*b2.mass;
+				b.dy  -= v*ny*b2.mass;
+				b.dz  -= v*nz*b2.mass;
+				b2.dx += v*nx*b.mass;
+				b2.dy += v*ny*b.mass;
+				b2.dz += v*nz*b.mass;*/
+			}
+		}
+		let d = Math.hypot(b.x, b.y, b.z);
+		if (d > radius-b.radius) {
+			b.x *= (radius-b.radius)/d;
+			b.y *= (radius-b.radius)/d;
+			b.z *= (radius-b.radius)/d;
+		}
+		let inertia = .999 ** ms;
+		b.dx = (b.x-px) * inertia;
+		b.dy = (b.y-py) * inertia;
+		b.dz = (b.z-pz) * inertia;
+		b.e.style.transform = "translate3d("+b.x+"px,"+b.y+"px,"+b.z+"px)";
+		b.e.style.filter = "contrast("+((b.z/(radius-b.radius)+1)/4+.5)+")";
+	}
+	last = now;
+	requestAnimationFrame(frame);
+}
+frame(0);
+</script>
