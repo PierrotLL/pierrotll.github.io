@@ -51,7 +51,7 @@ function frame(now) {
 		b.x += b.dx;
 		b.y += b.dy;
 		b.z += b.dz;
-		for (let j=i+1 ; j<l ; j++) {
+		for (let j=0 ; j<i ; j++) {
 			let b2 = balls[j],
 				dx = b2.x-b.x,
 				dy = b2.y-b.y,
