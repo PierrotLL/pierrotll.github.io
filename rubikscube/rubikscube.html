@@ -400,9 +400,9 @@ function normalizeAngle(a) {
 }
 
 let piecesVisibilityFlags;
-function updatePiecesVisibility(allVisible) { // set hidden=true on non-visible pieces to speed up DOM rendering
-	let max = getMaxCoord(), flags = !allVisible | (rotation>0)<<1 | (tilt<0)<<2 | (Math.abs(rotation)>90)<<3;
-	if (flags != piecesVisibilityFlags) pieces.forEach(p=>p.e.hidden = flags&1 && p.x!=(flags&2?-max:max) && p.y!=(flags&4?-max:max) && p.z!=(flags&8?-max:max));
+function updatePiecesVisibility(allVisible, forceUpdate) { // set hidden=true on non-visible pieces to speed up DOM rendering
+	let max = getMaxCoord(), flags = allVisible ? 0 : 1 | (rotation>0)<<1 | (tilt<0)<<2 | (Math.abs(rotation)>90)<<3;
+	if (flags != piecesVisibilityFlags || forceUpdate) pieces.forEach(p=>p.e.hidden = flags&1 && p.x!=(flags&2?-max:max) && p.y!=(flags&4?-max:max) && p.z!=(flags&8?-max:max));
 	piecesVisibilityFlags = flags;
 }
 
@@ -457,7 +457,7 @@ function rotatePiecesPermanently(pieces, axis, angle) {
 		let stickers = Object.fromEntries(Array.from(p.e.getElementsByClassName("sticker")).map(sticker => [sticker.parentElement.classList[1], sticker]));
 		p.e.childNodes.forEach(face => { let f = face.classList[1], s = swap[f]!=f ? stickers[swap[f]] : null; s && face.append(s); });
 	});
-	updatePiecesVisibility();
+	updatePiecesVisibility(false, true);
 }
 
 let animation;
