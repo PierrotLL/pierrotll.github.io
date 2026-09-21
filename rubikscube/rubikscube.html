@@ -266,7 +266,7 @@ option:checked { font-weight: bold }
 </body>
 
 <script>
-(_=>{
+//(_=>{
 openMenu.onclick = _=> [menu.style.maxHeight, openMenu.firstElementChild.style.rotate] = menu.style.maxHeight ? ['', ''] : ['16em', '45deg'];
 
 const FACES = [
@@ -318,12 +318,6 @@ function getPieces(selector) {
 	if (selector[0] instanceof Array) return selector.map(getPieces).flat();
 	return pieces.filter(o=>o[selector[0]]==selector[1]);
 }
-let previousVisible;
-function updatePiecesVisibility(visible) {
-	let max = getMaxCoord();
-	if (!visible || !previousVisible) pieces.forEach(p=>p.e.hidden = !visible && p.y!=(tilt<0?-max:max) && p.x!=(rotation>0?-max:max) && p.z!=(rotation<-90||rotation>90?-max:max));
-	previousVisible = visible;
-}
 
 ["mousedown", "touchstart"].forEach(type => scene.addEventListener(type, touchstart));
 ["mousemove", "touchmove"].forEach(type => addEventListener(type, touchmove, {passive: false}));
@@ -353,8 +347,8 @@ function touchmove(e) {
 		touch.lastY = [e.touches[0].clientY, e.touches[1].clientY];
 	} else if (touch.down) {
 		if (e.touches) e.preventDefault(); // prevent refresh on mobile
-		e.x ||= e.touches[0].clientX;
-		e.y ||= e.touches[0].clientY;
+		e.x ||= e.touches ? e.touches[0].clientX : 0;
+		e.y ||= e.touches ? e.touches[0].clientY : 0;
 		let pxToAngle = 360 / Math.min(innerWidth, innerHeight);
 		if (touch.face && !touch.piecesRotationDisabled) {
 			let vector = screenToSceneVector(e.x - touch.startX, e.y - touch.startY);
@@ -405,6 +399,13 @@ function normalizeAngle(a) {
 	return (a%360-540)%360+180;
 }
 
+let piecesVisibilityFlags;
+function updatePiecesVisibility(allVisible) { // set hidden=true on non-visible pieces to speed up DOM rendering
+	let max = getMaxCoord(), flags = !allVisible | (rotation>0)<<1 | (tilt<0)<<2 | (Math.abs(rotation)>90)<<3;
+	if (flags != piecesVisibilityFlags) pieces.forEach(p=>p.e.hidden = flags&1 && p.x!=(flags&2?-max:max) && p.y!=(flags&4?-max:max) && p.z!=(flags&8?-max:max));
+	piecesVisibilityFlags = flags;
+}
+
 let rotation=0, tilt=0, scale=1;
 function rotateCube(x, y, s) {
 	rotation = normalizeAngle(x);
@@ -428,14 +429,17 @@ function getMoveAxis(face, vector) { // return [ axis name (x|y|z), scene vector
 
 const FACES_VECTOR = Object.fromEntries(FACES.map(f => [ f.name, [f.x, f.y, f.z] ]));
 const VECTOR_FACE = Object.fromEntries(FACES.map(f => [ f.x+","+f.y+","+f.z, f.name ]));
-function getFacesSwap(axis, angle) {
-	let swap = {};
-	for (let i in FACES_VECTOR) {
-		let vector = Vector["rotate"+axis.toUpperCase()](FACES_VECTOR[i], -angle*DEG_TO_RAD).map(Math.round);
-		swap[i] = VECTOR_FACE[vector.join()];
+const SWAP = {x:{"-90":{},90:{},180:{}},y:{"-90":{},90:{},180:{}},z:{"-90":{},90:{},180:{}}};
+requestAnimationFrame(_=>{
+	for (let axis in SWAP) {
+		for (let angle in SWAP[axis]) {
+			for (let face in FACES_VECTOR) {
+				let vector = Vector["rotate"+axis.toUpperCase()](FACES_VECTOR[face], -angle*DEG_TO_RAD).map(Math.round);
+				SWAP[axis][angle][face] = VECTOR_FACE[vector.join()];
+			}
+		}
 	}
-	return swap;
-}
+});
 
 function rotatePiecesTemporarily(pieces, axis, angle) {
 	let property = "--r"+axis, value = angle ? normalizeAngle(angle)+"deg" : null;
@@ -445,7 +449,7 @@ function rotatePiecesTemporarily(pieces, axis, angle) {
 
 function rotatePiecesPermanently(pieces, axis, angle) {
 	if (angle % 360 == 0) return rotatePiecesTemporarily(pieces, axis, 0);
-	let swap = getFacesSwap(axis, angle);
+	let swap = SWAP[axis][normalizeAngle(angle)];
 	pieces.forEach(p => {
 		let vector = Vector["rotate"+axis.toUpperCase()]([p.x,p.y,p.z], angle*DEG_TO_RAD).map(i=>Math.round(i*2)/2);
 		vector.forEach((v, i) => p[AXIS[i]] = v);
@@ -459,20 +463,18 @@ function rotatePiecesPermanently(pieces, axis, angle) {
 let animation;
 function rotatePiecesAnimated(pieces, axis, fromAngle, toAngle, duration, ease) {
 	if (!duration) return rotatePiecesPermanently(pieces, axis, toAngle);
-	let start = performance.now(), end = start + duration*1e3;
-	function frame(now) {
-		let progress = (now-start)/(end-start);
-		if (progress < 1) {
-			rotatePiecesTemporarily(pieces, axis, fromAngle + (toAngle-fromAngle) * ease(progress));
-			animation.id = requestAnimationFrame(frame);
-		} else finishAnimation();
-	}
-	animation = { id:requestAnimationFrame(frame), pieces:pieces, axis:axis, toAngle:toAngle };
+	animation = { id:requestAnimationFrame(animationFrame), pieces:pieces, axis:axis, to:toAngle, delta:toAngle-fromAngle, duration:duration*1e3, end:performance.now()+duration*1e3, ease:ease };
+}
+function animationFrame(now) {
+	if (now >= animation.end) return finishAnimation();
+	let progress = 1 - (animation.end - now) / animation.duration;
+	rotatePiecesTemporarily(animation.pieces, animation.axis, animation.to - animation.delta * (1-animation.ease(progress)));
+	animation.id = requestAnimationFrame(animationFrame);
 }
 function finishAnimation() {
 	if (animation) {
 		cancelAnimationFrame(animation.id);
-		rotatePiecesPermanently(animation.pieces, animation.axis, animation.toAngle);
+		rotatePiecesPermanently(animation.pieces, animation.axis, animation.to);
 		animation = null;
 	}
 }
@@ -800,5 +802,5 @@ class Ease {
 	static easeOutCubic = t=>1-(1-t)**3;
 	static easeInOutCubic = t=>t<.5 ? 4*t**3 : 1-(-2*t+2)**3/2;
 }
-})();
+//})();
 </script>
