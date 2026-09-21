@@ -515,13 +515,6 @@ function parseInput(str) {
 }
 move.form.onsubmit = _=> { parseInput(move.value); move.value=move.placeholder=""; return false }
 
-function scramble() {
-	let randomInt = n => parseInt(Math.random() * n);
-	applyMoves(Array(10*getCubeSize()+randomInt(10)).fill(0).map(i=>"LMRUEDBSFlrudbf".charAt(randomInt(15))+"'2".charAt(randomInt(3))).join(""), 0);
-	history.clear();
-}
-scrambleButton.onclick = scramble;
-
 function applyMoves(str, duration=.4) {
 	let match = str && str.match(/(\d*)([xLlMmRryUuEeDdzBbSsFf])(w)?('|2)?/);
 	if (match) {
@@ -564,6 +557,14 @@ function applyMoves(str, duration=.4) {
 		} else delete touch.piecesRotationDisabled;
 	} else delete touch.piecesRotationDisabled;
 }
+
+function scramble() {
+	let randomInt = n => parseInt(Math.random() * n);
+	applyMoves(Array(10*getCubeSize()+randomInt(10)).fill(0).map(i=>"LMRUEDBSFlrudbf".charAt(randomInt(15))+"'2".charAt(randomInt(3))).join(""), 0);
+	history.clear();
+}
+scrambleButton.onclick = scramble;
+
 
 const history = {
 	data: [],
