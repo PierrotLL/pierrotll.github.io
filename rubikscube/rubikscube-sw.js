@@ -1,10 +1,10 @@
-const cacheName = "rubikscube-2026-09-21-v2";
+const cacheName = "rubikscube-2026-09-21-v3";
 const contentToCache = [
 	"rubikscube.html",
 	"rubikscube.webmanifest",
 	"icon-64.webp",
 	"icon-192.png",
-	"icon-512.png",
+	"splash-512.png",
 ];
 
 self.addEventListener("install", e => {
