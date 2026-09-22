@@ -206,11 +206,11 @@ option:checked { font-weight: bold }
 #timer {
 	pointer-events: none;
 	position: fixed;
-	top: 1rem;
+	top: 2em;
 	left: 50%;
 	translate: -50%;
-	color: #888;
-	font: 1.5em monospace;
+	color: #fff;
+	opacity: .1;
 }
 
 
@@ -766,7 +766,7 @@ helpButton.onclick = helper.click;
 const timer = {
 	element: document.getElementById("timer"),
 	clear: _=> {
-		timer.element.innerText = "";
+		timer.element.innerText = timer.element.style = "";
 		timer.running = timer.ready = false;
 	},
 	prepare: _=> timer.ready = true,
@@ -783,6 +783,7 @@ const timer = {
 		if (timer.running) {
 			timer.finalTime = performance.now() - timer.startTime;
 			timer.element.innerText = timer.format(timer.finalTime);
+			timer.element.style.opacity = 1;
 			timer.running = false;
 		}
 	},
@@ -806,7 +807,7 @@ function fpsCounter(now) {
 	}
 	requestAnimationFrame(fpsCounter);
 	
-	//timer.update(now);
+	timer.update(now);
 	
 	if (now-last > 40 && !document.hidden) {
 		slowFrames++;
