@@ -498,15 +498,14 @@ function updatePiecesVisibility(allVisible, forceUpdate) { // set hidden=true on
 
 function getMoveName(selector, angle) {
 	let max = getMaxCoord(), [axis, coord] = selector;
-	let move = {
+	let [name, dir] = {
 		x: [ ["L",-1],["M",-1],["R",1] ],
 		y: [ ["U",-1],["E",1],["D",1] ],
 		z: [ ["B",-1],["S",1],["F",1] ]
 	} [axis][coord/Math.abs(coord||1)+1];
-	let name = move[0];
 	if (coord && Math.abs(coord) < max) name = name.toLowerCase();
 	if (angle == 180) name += 2;
-	else if (angle * move[1] < 0) name += "'";
+	else if (angle * dir < 0) name += "'";
 	return name;
 }
 
@@ -517,15 +516,15 @@ function reverseMove(move) {
 
 function parseInput(str) {
 	let cubeSize = getCubeSize();
-	let moveRegex = /\d*[xLlMmRryUuEeDdzBbSsFf]w?['2]?/g;
-	str = str.replaceAll(/[XYZ]/g, m=>m.toLowerCase()); // xyz always in lower case
-	str = str.replaceAll(moveRegex, m=>" "+m); // add space between moves to avoid confusing pre/post numbers (slice number/turn quarters)
-	str = str.replaceAll(/(\d+)([LRUDBF])/gi, (_,n,l)=>n==2 ? l.toLowerCase() : (n>2?n:"")+l.toUpperCase()); // 1r or 1R => R, 2R => r, 3r => 3R
-	if (cubeSize == 2) str = str.replaceAll(/[MESw]/gi, "").replaceAll(/([lrudbf])/g, (_,l)=>l.toUpperCase()); // no inner slice nor wide move
+	if (cubeSize == 2) str = str.replaceAll(/[MESw]/gi, "").replaceAll(/[lrudbf]/g, l=>l.toUpperCase()); // no inner slice nor wide move
 	else if (cubeSize == 3) str = str.replaceAll(/([LRUDBF])w/gi, (_,l)=>l.toLowerCase()); // for 3x3x3 r means Rw
 	else str = str.replace(/([lrudbf])w/g, (_,l)=>l.toUpperCase()+"w"); // rw is equivalent to Rw
+	str = str.replaceAll(/[XYZ]/g, l=>l.toLowerCase()); // xyz always in lower case
+	str = str.replaceAll(/\d*[xLlMmRryUuEeDdzBbSsFf]w?['2]?/g, m=>m+" "); // add space between moves to avoid confusing pre/post numbers (slice number/turn quarters)
+	str = str.replaceAll(/\d*([xyzMES])w?/gi, (_,l)=>l); // remove useless slice number and wide flag
+	str = str.replaceAll(/(\d+)([LRUDBF])/gi, (_,n,l)=>n==2 ? l.toLowerCase() : (n>2?n:"")+l.toUpperCase()); // 1r or 1R => R, 2R => r, 3r => 3R
 	while (str.match(/\([^\(\)]+\)['\d]/)) { // nested groups
-		str = str.replaceAll(/\(([^\(\)]+)\)('|\d+)/g, (_,s,n)=>n=="'" ? s.match(moveRegex).map(reverseMove).join("") : s.repeat(n));
+		str = str.replaceAll(/\(([^\(\)]+)\)('|\d+)/g, (_,s,n)=>n=="'" ? s.replaceAll(" ", "' ") : s.repeat(n));
 	}
 	applyMoves(str);
 }
@@ -659,8 +658,8 @@ const save = {
 		if (data) {
 			data = data.split(";");
 			if (data.length == 4 && data[1].length == data[0]**2*6) {
+				let colors = Object.fromEntries(FACES.map(f=>[f.color.charAt(0), f.color]));
 				buildCube(cubeSize.value = data[0]);
-				let colors = {r:"red", o:"orange", y:"yellow", w:"white", b:"blue", g:"green"};
 				getOrderedStickers().forEach((s, i) => s.classList.replace(s.classList[1], colors[data[1].charAt(i)]));
 				history.data = data[2] ? data[2].split(",") : [];
 				history.current = parseInt(data[3]);
@@ -759,8 +758,7 @@ const helper = {
 			}
 		}
 		return facesColor;
-	},
-	solved: _=> helper.piecesOriented(pieces)
+	}
 }
 helpButton.onclick = helper.click;
 
@@ -774,7 +772,7 @@ const timer = {
 	prepare: _=> timer.ready = true,
 	move: _=> {
 		if (timer.ready) timer.start();
-		else if (timer.running && helper.solved()) timer.stop();
+		else if (timer.running && helper.piecesOriented(pieces)) timer.stop();
 	},
 	start: _=> {
 		timer.startTime = performance.now();
