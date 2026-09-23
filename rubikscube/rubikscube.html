@@ -278,7 +278,7 @@ option:checked { font-weight: bold }
 </body>
 
 <script>
-(_=>{
+//(_=>{
 openMenu.onclick = _=> [menu.style.maxHeight, openMenu.firstElementChild.style.rotate] = menu.style.maxHeight ? ['', ''] : ['16em', '45deg'];
 
 const FACES = [
@@ -426,8 +426,8 @@ function getMoveAxis(face, vector) { // return [ axis name (x|y|z), scene vector
 
 const SWAP = {x:{"-90":{},90:{},180:{}},y:{"-90":{},90:{},180:{}},z:{"-90":{},90:{},180:{}}};
 requestAnimationFrame(_=>{
-	const face2vector = Object.fromEntries(FACES.map(f => [ f.name, [f.x, f.y, f.z] ]));
-	const vector2face = Object.fromEntries(FACES.map(f => [ [f.x,f.y,f.z]+"", f.name ]));
+	let face2vector = Object.fromEntries(FACES.map(f => [ f.name, [f.x,f.y,f.z] ]));
+	let vector2face = Object.fromEntries(FACES.map(f => [ [f.x,f.y,f.z], f.name ]));
 	for (let axis in SWAP) {
 		for (let angle in SWAP[axis]) {
 			for (let face in face2vector) {
@@ -445,14 +445,14 @@ function rotateCube(x, y, s) {
 	tilt = Math.min(Math.max(y, -90), 90);
 	scale = Math.min(Math.max(s, .5), 1.5);
 	cancelAnimationFrame(touch.animation);
-	touch.animation = requestAnimationFrame(_=>{ scene.style = "--rx:"+tilt+"deg;--ry:"+rotation+"deg;--sc:"+scale; updatePiecesVisibility(); });
+	touch.animation = requestAnimationFrame(_=> updatePiecesVisibility(), scene.style = "--rx:"+tilt+"deg;--ry:"+rotation+"deg;--sc:"+scale);
 }
 rotateCube(-22.5, -22.5, 1);
 
 function rotatePiecesTemporarily(pieces, axis, angle) {
 	let property = "--r"+axis, value = angle ? normalizeAngle(angle)+"deg" : null;
 	pieces.forEach(p=>p.e.style.setProperty(property, value));
-	updatePiecesVisibility(angle != 0);
+	updatePiecesVisibility(true);
 }
 
 function rotatePiecesPermanently(pieces, axis, angle) {
@@ -465,7 +465,7 @@ function rotatePiecesPermanently(pieces, axis, angle) {
 		let stickers = Object.fromEntries(Array.from(p.e.getElementsByClassName("sticker")).map(sticker => [sticker.parentElement.classList[1], sticker]));
 		p.e.childNodes.forEach(face => { let f = face.classList[1], s = swap[f]!=f ? stickers[swap[f]] : null; s && face.append(s); });
 	});
-	updatePiecesVisibility(false, true);
+	updatePiecesVisibility(true);
 	timer.move();
 }
 
@@ -489,9 +489,9 @@ function finishAnimation() {
 }
 
 let piecesVisibilityFlags;
-function updatePiecesVisibility(allVisible, forceUpdate) { // set hidden=true on non-visible pieces to speed up rendering
+function updatePiecesVisibility(allVisible) { // set hidden=true on non-visible pieces to speed up rendering
 	let max = getMaxCoord(), flags = allVisible ? 0 : 1 | (rotation>0)<<1 | (tilt<0)<<2 | (Math.abs(rotation)>90)<<3;
-	if (flags != piecesVisibilityFlags || forceUpdate) pieces.forEach(p=>p.e.hidden = flags&1 && p.x!=(flags&2?-max:max) && p.y!=(flags&4?-max:max) && p.z!=(flags&8?-max:max));
+	if (flags != piecesVisibilityFlags) pieces.forEach(p=>p.e.hidden = flags&1 && p.x!=(flags&2?-max:max) && p.y!=(flags&4?-max:max) && p.z!=(flags&8?-max:max));
 	piecesVisibilityFlags = flags;
 }
 
@@ -574,8 +574,8 @@ function applyMoves(str, duration=.4) {
 }
 
 function scramble() {
-	let randomInt = n => parseInt(Math.random() * n);
 	timer.clear();
+	let randomInt = n => parseInt(Math.random() * n);
 	applyMoves(Array(10*getCubeSize()+randomInt(10)).fill(0).map(i=>"LMRUEDBSFlrudbf".charAt(randomInt(15))+"'2".charAt(randomInt(3))).join(""), 0);
 	history.clear();
 	timer.prepare();
@@ -788,8 +788,8 @@ const timer = {
 		}
 	},
 	format: ms => {
-		let s = ms * .001;
-		return parseInt(s/60)+":"+parseInt(s%60).toString().padStart(2,0)+"."+parseInt((ms*.1)%100).toString().padStart(2,0);
+		let m = ms/6e4|0, s = ms*.001%60|0;
+		return m+":"+(s>9?s:"0"+s)+"."+String(ms%1e3|0).padStart(3,0);
 	},
 	update: now => {
 		if (timer.running) timer.element.innerText = timer.format(now - timer.startTime);
@@ -854,5 +854,5 @@ class Ease {
 	static easeOutCubic = t=>1-(1-t)**3;
 	static easeInOutCubic = t=>t<.5 ? 4*t**3 : 1-(-2*t+2)**3/2;
 }
-})();
+//})();
 </script>
