@@ -305,8 +305,8 @@ function complete() {
 		best = getScore(clef, sharp, save[0], save[1], save[2]);
 	}
 	if (score > best) localStorage.setItem(name, correct+" "+wrong+" "+elapsed);
-	score.innerHTML = score+(score>best?"&#128081;":"");
-	best.innerHTML = best;
+	document.getElementById("score").innerHTML = score+(score>best?"&#128081;":"");
+	document.getElementById("best").innerHTML = best;
 	replay.onclick = _=> {
 		result.setAttribute("hidden", true);
 		start();

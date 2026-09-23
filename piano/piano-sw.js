@@ -1,9 +1,8 @@
-const cacheName = "piano-2026-08-28";
+const cacheName = "piano-2026-09-23";
 const contentToCache = [
 	"piano.html",
 	"piano.webmanifest",
 	"icon-64.webp",
-	"icon-192.webp",
 	"icon-512.png",
 	"FClef.svg",
 	"GClef.svg",
