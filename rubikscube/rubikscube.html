@@ -143,8 +143,6 @@ body {
 }
 #menu, #openMenu * { transition: .4s }
 #menu > * { display: flex; gap: .3em }
-select, input[type="text"] { width: 9em }
-#menu * button { flex-grow: 1 }
 label {
 	display: block;
 	margin-top: .5em;
@@ -153,10 +151,12 @@ label {
 input, select, button {
 	box-sizing: border-box;
 	padding: .5em 1em;
-	font-size: inherit;
+	font-size: 1em;
 	text-align: center;
 	color: #000;
 }
+input, select { width: 9em }
+#menu * button { flex-grow: 1 }
 option:checked { font-weight: bold }
 
 
@@ -168,7 +168,7 @@ option:checked { font-weight: bold }
 	contain: content;
 	min-width: 2em;
 	min-height: 2em;
-	--max-width: min(calc(100vw - 2em), 500px);
+	--max-width: min(100vw - 2em, 500px);
 	border-radius: 1em;
 	border: solid 1px #fff;
 	background: linear-gradient(aqua, navy);
@@ -304,7 +304,6 @@ buildCube(cubeSize.value = 3);
 cubeSize.onchange = _=> {
 	buildCube(cubeSize.value);
 	history.clear();
-	save.erase();
 	helper.hide();
 	timer.clear();
 }
@@ -563,14 +562,12 @@ function applyMoves(str, duration=.4) {
 	} else delete touch.piecesRotationDisabled;
 }
 
-function scramble() {
+scrambleButton.onclick = _=> {
 	timer.clear();
-	let randomInt = n => parseInt(Math.random() * n);
-	applyMoves(Array(10*getCubeSize()+randomInt(10)).fill(0).map(i=>"LMRUEDBSFlrudbf".charAt(randomInt(15))+"'2".charAt(randomInt(3))).join(""), 0);
+	applyMoves(Array.from({length:10*getCubeSize()+10*Math.random()|0}, _=>"LMRUEDBSFlrudbf".charAt(randomInt(15))+"'2".charAt(3*Math.random()|0)).join(""), 0);
 	history.clear();
 	timer.prepare();
 }
-scrambleButton.onclick = scramble;
 
 
 const history = {
@@ -755,7 +752,7 @@ function fpsCounter(now) {
 	if (now*.001 < seconds+1) frames++;
 	else {
 		fps.innerText = frames;
-		seconds = parseInt(now*.001);
+		seconds = now*.001|0;
 		frames = 1;
 	}
 	requestAnimationFrame(fpsCounter);
