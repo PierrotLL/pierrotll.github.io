@@ -286,17 +286,17 @@ function buildCube(size) {
 	let max = Math.floor(size-1)/2;
 	for (let x=-max, y=-max, z=-max ; z<=max ; ++x>max ? ++y>max ? (++z, x=y=-max) : x=-max : 0) {
 		if (Math.abs(x)==max || Math.abs(y)==max || Math.abs(z)==max) {
-			let piece = cube.appendChild(document.createElement("div"));
+			let piece = cube.appendChild(document.createElement("div")), stickers = {};
 			piece.className = "piece";
 			piece.style = "--x:"+x+"em;--y:"+y+"em;--z:"+z+"em";
 			FACES.forEach(f => {
 				let face = piece.appendChild(document.createElement("div"));
 				face.className = "face "+f.name;
 				if ((x && x == f.x*max) || (y && y == f.y*max) || (z && z == f.z*max)) {
-					face.appendChild(document.createElement("div")).className = "sticker "+f.color;
+					(stickers[f.name] = face.appendChild(document.createElement("div"))).className = "sticker "+f.color;
 				}
 			});
-			pieces.push({e:piece, x:x, y:y, z:z});
+			pieces.push({e:piece, x:x, y:y, z:z, s:stickers});
 		}
 	}
 }
@@ -420,7 +420,7 @@ requestAnimationFrame(_=>{
 		for (let angle in SWAP[axis]) {
 			for (let face in face2vector) {
 				let vector = Vector["rotate"+axis.toUpperCase()](face2vector[face], -angle*DEG_TO_RAD).map(Math.round);
-				SWAP[axis][angle][face] = vector2face[vector.join()];
+				SWAP[axis][angle][vector2face[vector.join()]] = face;
 			}
 		}
 	}
@@ -447,11 +447,13 @@ function rotatePiecesPermanently(pieces, axis, angle) {
 	if (angle % 360 == 0) return rotatePiecesTemporarily(pieces, axis, 0);
 	let swap = SWAP[axis][normalizeAngle(angle)];
 	pieces.forEach(p => {
-		let vector = Vector["rotate"+axis.toUpperCase()]([p.x,p.y,p.z], angle*DEG_TO_RAD).map(i=>Math.round(i*2)/2);
-		vector.forEach((v, i) => p[AXIS[i]] = v);
+		let vector = Vector["rotate"+axis.toUpperCase()]([p.x,p.y,p.z], angle*DEG_TO_RAD);
+		vector.forEach((v, i) => p[AXIS[i]] = Math.round(v*2)*.5);
 		p.e.style = "--x:"+p.x+"em;--y:"+p.y+"em;--z:"+p.z+"em";
-		let stickers = Object.fromEntries(Array.from(p.e.getElementsByClassName("sticker")).map(sticker => [sticker.parentElement.classList[1], sticker]));
-		p.e.childNodes.forEach(face => { let f = face.classList[1], s = swap[f]!=f ? stickers[swap[f]] : null; s && face.append(s); });
+		let name, stickers = {};
+		for (name in p.s) stickers[swap[name]] = p.s[name];
+		p.s = stickers;
+		p.e.childNodes.forEach(face => (name=face.classList[1]) && p.s[name] && face.append(p.s[name]));
 	});
 	updatePiecesVisibility(true);
 	timer.move();
@@ -618,10 +620,9 @@ forward.onclick = history.forward;
 
 
 function getOrderedStickers() {
-	let stickers = Array.from(cube.getElementsByClassName("sticker")), map = new Map();
-	pieces.forEach(p => map.set(p.e, p));
-	stickers.forEach(s => map.set(s, map.get(s.parentElement.parentElement)));
-	return stickers.sort((a, b) => map.get(a).x-map.get(b).x || map.get(a).y-map.get(b).y || map.get(a).z-map.get(b).z || a.parentElement.classList[1].charCodeAt(0)-b.parentElement.classList[1].charCodeAt(0));
+	let stickers = [], faces = FACES.map(f=>f.name).sort((a, b) => a.charCodeAt(0)-b.charCodeAt(0));
+	pieces.sort((a, b) => a.x-b.x || a.y-b.y || a.z-b.z).forEach(p => faces.forEach(f => p.s[f] && stickers.push(p.s[f])));
+	return stickers;
 }
 const save = {
 	timeout: null,
@@ -662,32 +663,6 @@ save.load();
 onbeforeunload = save.save;
 onvisibilitychange = _=> document.hidden ? save.save() : null;
 
-
-class RubiksCube {
-	constructor(size) {
-		this.corners = [];
-		this.edges = [];
-		this.centers = [];
-		for (let i=0 ; i<6 ; i++) this.corners.push([i,0]); // [position, orientation]
-		for (let i=0 ; i<12*(size-2) ; i++) this.edges.push([i,0]);
-		for (let i=0 ; i<6*(size-2)**2 ; i++) this.centers.push([i,0]);
-	}
-	static fromHTML(html) {
-		let size = Math.ceil(Math.cbrt(html.childElementCount));
-		let cube = new RubiksCube(size);
-		html.childNodes.forEach(piece => {
-			let stickers = Array.from(piece.children).filter(face=>face.firstChild).map(face => [face.classList[1], face.firstChild.classList[1]]);
-			let map = Object.entries(stickers);
-			let type = [cube.centers,cube.edges,cube.corners][stickers.length-1];
-			switch (stickers.length) {
-				case 1:
-					
-					break;
-			}
-		});
-		return cube;
-	}
-}
 
 const helper = {
 	show: str => help.innerHTML = str,
@@ -769,7 +744,8 @@ const timer = {
 	},
 	format: ms => {
 		let m = ms/6e4|0, s = ms*.001%60|0;
-		return m+":"+(s>9?s:"0"+s)//+"."+String(ms%1e3|0).padStart(3,0);
+		return (m ? m + " minutes " : "") + s + " seconds";
+		//return m+":"+(s>9?s:"0"+s)+"."+String(ms%1e3|0).padStart(3,0);
 	}
 }
 
@@ -828,6 +804,32 @@ class Ease {
 	static easeInCubic = t=>t**3;
 	static easeOutCubic = t=>1-(1-t)**3;
 	static easeInOutCubic = t=>t<.5 ? 4*t**3 : 1-(-2*t+2)**3/2;
+}
+
+class RubiksCube { // WIP
+	constructor(size) {
+		this.corners = [];
+		this.edges = [];
+		this.centers = [];
+		for (let i=0 ; i<6 ; i++) this.corners.push([i,0]); // [position, orientation]
+		for (let i=0 ; i<12*(size-2) ; i++) this.edges.push([i,0]);
+		for (let i=0 ; i<6*(size-2)**2 ; i++) this.centers.push([i,0]);
+	}
+	static fromHTML(html) {
+		let size = Math.ceil(Math.cbrt(html.childElementCount));
+		let cube = new RubiksCube(size);
+		html.childNodes.forEach(piece => {
+			let stickers = Array.from(piece.children).filter(face=>face.firstChild).map(face => [face.classList[1], face.firstChild.classList[1]]);
+			let map = Object.entries(stickers);
+			let type = [cube.centers,cube.edges,cube.corners][stickers.length-1];
+			switch (stickers.length) {
+				case 1:
+					
+					break;
+			}
+		});
+		return cube;
+	}
 }
 })();
 </script>
