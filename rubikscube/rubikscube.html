@@ -492,7 +492,7 @@ function getMoveName(selector, angle) {
 		y: [ ["U",-1],["E",1],["D",1] ],
 		z: [ ["B",-1],["S",1],["F",1] ]
 	} [axis][coord/Math.abs(coord||1)+1];
-	if (coord && Math.abs(coord) < max) name = name.toLowerCase();
+	if (coord && Math.abs(coord) < max) name = max > 2 ? max-Math.abs(coord)+1+name : name.toLowerCase();
 	if (angle == 180) name += 2;
 	else if (angle * dir < 0) name += "'";
 	return name;
