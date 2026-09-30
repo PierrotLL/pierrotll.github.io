@@ -269,6 +269,7 @@ option:checked { font-weight: bold }
 (_=>{
 openMenu.onclick = _=> [menu.style.maxHeight, openMenu.firstElementChild.style.rotate] = menu.style.maxHeight ? ['', ''] : ['16em', '45deg'];
 
+const AXIS = ["x", "y", "z"];
 const FACES = [
 	{name:"up", x:0, y:-1, z:0, color:"red"},
 	{name:"down", x:0, y:1, z:0, color:"orange"},
@@ -283,7 +284,7 @@ function buildCube(size) {
 	cube.style.fontSize = 1/size+"em";
 	cube.classList.remove("flat");
 	pieces.length = 0;
-	let max = Math.floor(size-1)/2;
+	let max = (size-1|0)*.5;
 	for (let x=-max, y=-max, z=-max ; z<=max ; ++x>max ? ++y>max ? (++z, x=y=-max) : x=-max : 0) {
 		if (Math.abs(x)==max || Math.abs(y)==max || Math.abs(z)==max) {
 			let piece = cube.appendChild(document.createElement("div")), stickers = {};
@@ -337,6 +338,7 @@ function touchstart(e) {
 		touch.face = e.target.closest(".face");
 		touch.down = e.target == scene || touch.face != null;
 		if (touch.face) document.body.classList.add("grabbing");
+		touch.pxToAngle = 360 / Math.min(innerWidth, innerHeight);
 	}
 }
 function touchmove(e) {
@@ -350,20 +352,19 @@ function touchmove(e) {
 		if (e.touches) e.preventDefault(); // prevent refresh on mobile
 		e.x ||= e.touches ? e.touches[0].clientX : 0;
 		e.y ||= e.touches ? e.touches[0].clientY : 0;
-		let pxToAngle = 360 / Math.min(innerWidth, innerHeight);
 		if (touch.face && !touch.piecesRotationDisabled) {
 			let vector = screenToSceneVector(e.x - touch.startX, e.y - touch.startY);
-			touch.axis ||= Math.hypot.apply(null, vector)*pxToAngle > 5 ? getMoveAxis(touch.face.classList[1], vector) : null;
+			touch.axis ||= Math.hypot.apply(null, vector)*touch.pxToAngle > 5 ? getMoveAxis(touch.face.classList[1], vector) : null;
 			if (touch.axis) {
 				finishAnimation();
 				touch.selector ||= [ touch.axis[0], getPieces(["e",touch.face.parentElement])[0][touch.axis[0]] ];
 				touch.pieces ||= getPieces(touch.selector);
-				touch.piecesRotation = vector[touch.axis[1]] * touch.axis[2] * pxToAngle;
+				touch.piecesRotation = vector[touch.axis[1]] * touch.axis[2] * touch.pxToAngle;
 				cancelAnimationFrame(touch.animation);
 				touch.animation = requestAnimationFrame(_=> rotatePiecesTemporarily(touch.pieces, touch.axis[0], touch.piecesRotation));
 			}
 		} else {
-			rotateCube(rotation + (e.x - touch.lastX) * pxToAngle, tilt - (e.y - touch.lastY) * pxToAngle, scale);
+			rotateCube(rotation + (e.x - touch.lastX) * touch.pxToAngle, tilt - (e.y - touch.lastY) * touch.pxToAngle, scale);
 		}
 		touch.lastX = e.x;
 		touch.lastY = e.y;
@@ -404,18 +405,18 @@ function screenToSceneVector(dx, dy) {
 	return Vector.rotateY(Vector.rotateX([dx, dy, 0], -tilt*DEG_TO_RAD), -rotation*DEG_TO_RAD);
 }
 
-const AXIS = ["x", "y", "z"];
-const FACES_AXIS = { up:[0,2],down:[2,0], front:[0,1],back:[1,0], left:[2,1],right:[1,2] };
+const FACES_AXIS = Object.fromEntries(FACES.map(f => { let a=AXIS.indexOf(AXIS.filter(a=>f[a])[0]); return [f.name, f[AXIS[a]]>0 ? [(a+1)%3, (a+2)%3] : [(a+2)%3, (a+1)%3]]; }));
 function getMoveAxis(face, vector) { // return [ axis name (x|y|z), scene vector component to use for rotation angle (0|1|2), vector component factor (-1|1) ]
 	let axis = FACES_AXIS[face];
 	return Math.abs(vector[axis[0]]) > Math.abs(vector[axis[1]]) ? [AXIS[axis[1]], axis[0], 1] : [AXIS[axis[0]], axis[1], -1];
 }
 
-const SWAP = {x:{"-90":{},90:{},180:{}},y:{"-90":{},90:{},180:{}},z:{"-90":{},90:{},180:{}}};
+const SWAP = {};
 requestAnimationFrame(_=>{
-	let face2vector = Object.fromEntries(FACES.map(f => [ f.name, [f.x,f.y,f.z] ]));
-	let vector2face = Object.fromEntries(FACES.map(f => [ [f.x,f.y,f.z], f.name ]));
-	for (let axis in SWAP) {
+	let face2vector = Object.fromEntries(FACES.map(f => [ f.name, [f.x,f.y,f.z] ])),
+		vector2face = Object.fromEntries(FACES.map(f => [ [f.x,f.y,f.z], f.name ]));
+	for (let axis of AXIS) {
+		SWAP[axis] = {"-90":{},90:{},180:{}};
 		for (let angle in SWAP[axis]) {
 			for (let face in face2vector) {
 				let vector = Vector["rotate"+axis.toUpperCase()](face2vector[face], -angle*DEG_TO_RAD).map(Math.round);
@@ -444,9 +445,10 @@ function rotatePiecesTemporarily(pieces, axis, angle) {
 
 function rotatePiecesPermanently(pieces, axis, angle) {
 	if (angle % 360 == 0) return rotatePiecesTemporarily(pieces, axis, 0);
-	let swap = SWAP[axis][normalizeAngle(angle)];
+	let swap = SWAP[axis][normalizeAngle(angle)],
+		rad = angle * DEG_TO_RAD, cos = Math.cos(rad), sin = Math.sin(rad);
 	pieces.forEach(p => {
-		let vector = Vector["rotate"+axis.toUpperCase()]([p.x,p.y,p.z], angle*DEG_TO_RAD);
+		let vector = Vector["rotate"+axis.toUpperCase()]([p.x,p.y,p.z], rad, cos, sin);
 		vector.forEach((v, i) => p[AXIS[i]] = Math.round(v*2)*.5);
 		p.e.style = "--x:"+p.x+"em;--y:"+p.y+"em;--z:"+p.z+"em";
 		let name, stickers = {};
@@ -564,7 +566,7 @@ function applyMoves(str, duration=.4) {
 
 scrambleButton.onclick = _=> {
 	timer.clear();
-	applyMoves(Array.from({length:10*getCubeSize()+10*Math.random()|0}, _=>"LMRUEDBSFlrudbf".charAt(randomInt(15))+"'2".charAt(3*Math.random()|0)).join(""), 0);
+	applyMoves(Array.from({length:10*getCubeSize()+10*Math.random()|0}, _=>"LMRUEDBSFlrudbf".charAt(15*Math.random()|0)+"'2".charAt(3*Math.random()|0)).join(""), 0);
 	history.clear();
 	timer.prepare();
 }
@@ -618,7 +620,7 @@ forward.onclick = history.forward;
 
 function getOrderedStickers() {
 	let stickers = [], faces = FACES.map(f=>f.name).sort((a, b) => a.charCodeAt(0)-b.charCodeAt(0));
-	pieces.sort((a, b) => a.x-b.x || a.y-b.y || a.z-b.z).forEach(p => faces.forEach(f => p.s[f] && stickers.push(p.s[f])));
+	pieces.sort((a, b) => a.z-b.z || a.y-b.y || a.x-b.x).forEach(p => faces.forEach(f => p.s[f] && stickers.push(p.s[f])));
 	return stickers;
 }
 const save = {
@@ -742,7 +744,6 @@ const timer = {
 	format: ms => {
 		let m = ms/6e4|0, s = ms*.001%60|0;
 		return (m ? m + " minutes " : "") + s + " seconds";
-		//return m+":"+(s>9?s:"0"+s)+"."+String(ms%1e3|0).padStart(3,0);
 	}
 }
 
@@ -770,24 +771,24 @@ fpsCounter(0);
 
 
 class Vector {
-	static rotateX(vector, angle) {
-		let sin = Math.sin(angle), cos = Math.cos(angle);
+	static rotateX(vector, angle, cos, sin) {
+		cos ||= Math.cos(angle); sin ||= Math.sin(angle);
 		return [
 			vector[0],
 			vector[1]*cos - vector[2]*sin,
 			vector[1]*sin + vector[2]*cos
 		];
 	}
-	static rotateY(vector, angle) {
-		let sin = Math.sin(angle), cos = Math.cos(angle);
+	static rotateY(vector, angle, cos, sin) {
+		cos ||= Math.cos(angle); sin ||= Math.sin(angle);
 		return [
 			vector[0]*cos + vector[2]*sin,
 			vector[1],
 			-vector[0]*sin + vector[2]*cos
 		];
 	}
-	static rotateZ(vector, angle) {
-		let sin = Math.sin(angle), cos = Math.cos(angle);
+	static rotateZ(vector, angle, cos, sin) {
+		cos ||= Math.cos(angle); sin ||= Math.sin(angle);
 		return [
 			vector[0]*cos - vector[1]*sin,
 			vector[0]*sin + vector[1]*cos,
@@ -803,30 +804,144 @@ class Ease {
 	static easeInOutCubic = t=>t<.5 ? 4*t**3 : 1-(-2*t+2)**3/2;
 }
 
-class RubiksCube { // WIP
-	constructor(size) {
-		this.corners = [];
-		this.edges = [];
-		this.centers = [];
-		for (let i=0 ; i<6 ; i++) this.corners.push([i,0]); // [position, orientation]
-		for (let i=0 ; i<12*(size-2) ; i++) this.edges.push([i,0]);
-		for (let i=0 ; i<6*(size-2)**2 ; i++) this.centers.push([i,0]);
-	}
-	static fromHTML(html) {
-		let size = Math.ceil(Math.cbrt(html.childElementCount));
-		let cube = new RubiksCube(size);
-		html.childNodes.forEach(piece => {
-			let stickers = Array.from(piece.children).filter(face=>face.firstChild).map(face => [face.classList[1], face.firstChild.classList[1]]);
-			let map = Object.entries(stickers);
-			let type = [cube.centers,cube.edges,cube.corners][stickers.length-1];
-			switch (stickers.length) {
-				case 1:
-					
-					break;
+
+class Solver {
+	constructor(pieces) {
+		this.max = Math.abs(pieces[0].x);
+		this.cubeSize = this.max*2+1;
+		this.faceLength = this.cubeSize**2;
+		this.faceInfo = FACES.map(f => { let i = AXIS.indexOf(AXIS.filter(a=>f[a])[0]); return { coord: f[AXIS[i]], axis: [ AXIS[i], AXIS[(i+1)%3], AXIS[(i+2)%3] ] }; });
+		let coord2faceId  = Object.fromEntries(FACES.map((f,i) => [this.faceInfo[i].axis[0]+"="+this.faceInfo[i].coord, i]));
+		this.adjFaces = FACES.map((f, i) => [
+			coord2faceId[this.faceInfo[i].axis[1]+"="+this.faceInfo[i].coord*-1],
+			coord2faceId[this.faceInfo[i].axis[2]+"=-1"],
+			coord2faceId[this.faceInfo[i].axis[1]+"="+this.faceInfo[i].coord],
+			coord2faceId[this.faceInfo[i].axis[2]+"=1"],
+		]);
+		
+		let color2faceId  = Object.fromEntries(FACES.map((f,i) => [f.color, i]));
+		this.initialState = [];
+		FACES.forEach((f, i)=>{
+			i = this.faceInfo[i];
+			let facePieces = pieces.filter(p=>p[i.axis[0]] == i.coord*this.max).sort((a,b)=>(a[i.axis[2]]-b[i.axis[2]] || a[i.axis[1]]-b[i.axis[1]])*i.coord);
+			facePieces.forEach(p=>this.initialState.push(color2faceId[p.s[f.name].classList[1]]));
+		});
+		
+		this.moves = {};
+		function filterChanged(a) {
+			let o = {};
+			for (let i=a.length-1 ; i>=0 ; i--) if (i!=a[i]) o[i]=a[i];
+			return o;
+		}
+		FACES.forEach((f, i) => {
+			for (let d = 0 ; d<this.max ; d++) {
+				let l = f.name.charAt(0).toUpperCase(), a = [...this.initialState.keys()];
+				this.moves[d+1+l+" "] = filterChanged(a = this.rotate(a, i, d));
+				this.moves[d+1+l+"2"] = filterChanged(a = this.rotate(a, i, d));
+				this.moves[d+1+l+"'"] = filterChanged(a = this.rotate(a, i, d));
 			}
 		});
-		return cube;
+		this.show(this.fastRotate(this.initialState, this.moves["L2"]));
 	}
+	rotate(stickers, face, depth) {
+		let pos = this.faceInfo[face].coord > 0;
+		if (!depth) {
+			let start = this.faceLength*face,
+				faceStickers = stickers.slice(start, start+this.faceLength);
+			for (let i=0 ; i<this.faceLength ; i++) {
+				let x=i%this.cubeSize, y=i/this.cubeSize|0, j = pos ? (x+1)*this.cubeSize-y-1 : (this.cubeSize-x-1)*this.cubeSize+y;
+				stickers[start+j] = faceStickers[i];
+			}
+		}
+		let buff1, buff2=[];
+		for (let i=0 ; i<4 ; i++) {
+			let fromFace = this.adjFaces[face][i], toFace = this.adjFaces[face][(i+1)%4];
+			for (let j=0 ; j<this.cubeSize ; j++) {
+				let k = this.cubeSize-1-j, from, to;
+				switch (i) {
+					case 0: from = (pos ? j:k) + depth*this.cubeSize;
+							to = (pos ? k*this.cubeSize + depth : (j+1)*this.cubeSize-1-depth); break;
+					case 1: from = (pos ? k*this.cubeSize + depth : (j+1)*this.cubeSize-1-depth);
+							to = (pos ? j:k)+this.faceLength-this.cubeSize - depth*this.cubeSize; break;
+					case 2: from = (pos ? j:k)+this.faceLength-this.cubeSize - depth*this.cubeSize;
+							to = (pos ? (k+1)*this.cubeSize-1 - depth : j*this.cubeSize + depth); break;
+					case 3: from = (pos ? (k+1)*this.cubeSize-1 - depth : j*this.cubeSize + depth);
+							to = (pos ? j:k) + depth*this.cubeSize; break;
+				}
+				buff2[j] = stickers[to+toFace*this.faceLength];
+				stickers[to+toFace*this.faceLength] = buff1 ? buff1[j] : stickers[from+fromFace*this.faceLength];
+			}
+			[buff1, buff2] = [buff2, buff1||[]];
+		}
+		return stickers;
+	}
+	fastRotate(stickers, changes) {
+		(this.buffer ||= []).length = 0;
+		for (let i in changes) this.buffer[i] = stickers[i];
+		for (let i in changes) stickers[i] = this.buffer[changes[i]];
+		return stickers;
+	}
+	show(stickers) {
+		let s = stickers.concat();
+		FACES.forEach((f, i)=>{
+			i = this.faceInfo[i];
+			let facePieces = pieces.filter(p=>p[i.axis[0]] == i.coord*this.max).sort((a,b)=>(a[i.axis[2]]-b[i.axis[2]] || a[i.axis[1]]-b[i.axis[1]])*i.coord);
+			facePieces.forEach(p=>p.s[f.name].className = "sticker "+FACES[s.shift()].color);
+		});
+	}
+	solved(stickers) {
+		for (let i=0 ; i<6 ; i+=2) {
+			for (let j=1 ; j<this.faceLength ; j++) {
+				if (stickers[i*this.faceLength] != stickers[i*this.faceLength+j]) return false;
+			}
+		}
+		return true;
+	}
+	brute() {
+		let start = performance.now();
+		return new Promise((resolve, reject) => {
+			let moveNames = Object.keys(this.moves), moveLength = moveNames.length, tree = [-1], states = {"": this.initialState}, statesLen = 0, that=this;
+			function step() {
+				let i, l = tree.length;
+				next: while (1) {
+					i = 0;
+					while(++tree[i]>=moveLength) { tree[i]=0; i++; if (i==l) tree[l++]=0; }
+					for (let j=0 ; j<i+1 && j<l-1 ; j++) if (tree[j] == tree[j+1] || moveNames[tree[j]].slice(0,2) == moveNames[tree[j+1]].slice(0,2)) continue next;
+					break;
+				}
+				let path = tree.concat(), state;
+				while (!(state = states[path])) i=--path.length;
+				state = state.concat();
+				while(i<l) that.fastRotate(state, that.moves[moveNames[tree[i++]]]);
+				if (that.solved(state)) return true;
+				if (statesLen < 1e7) statesLen++, states[tree] = state;
+			}
+			function loop() {
+				let solved, start = performance.now();
+				do {
+					let i=1e3;
+					while (!solved && i--) solved = step();
+				} while (!solved && performance.now()-start < 20);
+				console.log(tree.length);
+				if (solved) resolve(tree.map(i=>moveNames[i]).join(" ").replaceAll("1",""));
+				else setTimeout(loop, 0);
+			}
+			if (this.solved(this.initialState)) resolve("");
+			else loop();
+		}).finally(_=>{let ms=performance.now()-start, s=1e3, m=s*60, h=m*60; console.log((ms/h|0)+"h", ((ms%h)/m|0)+"m", ((ms%m)/s|0)+"s"); });
+	}
+}
+
+function benchmark(functions, iterations = 1, iterationsTotal = 1) {
+	let times = {}, i = iterationsTotal, name;
+	while(i--) {
+		for (name in functions) {
+			let j = iterations, fn = functions[name], start = performance.now();
+			while(j--) fn();
+			times[name] = (times[name]??0)+performance.now()-start;
+		}
+	}
+	for (name in functions) console.log(name+": "+(times[name]/iterationsTotal));
 }
 })();
 </script>
