@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width,user-scalable=no,interactive-widget=resizes-content" />
 
 <link rel="manifest" href="rubikscube.webmanifest" />
-<script>if (navigator.serviceWorker) navigator.serviceWorker.register("rubikscube-sw.js");</script>
+<script>navigator.serviceWorker?.register("rubikscube-sw.js");</script>
 <script src="../pwaInstallButton.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@easy-pwa/beforeinstallprompt-polyfill@1.0.0-BETA1/dist/beforeinstallprompt-polyfill.min.js"></script>
 
@@ -841,7 +841,6 @@ class Solver {
 				this.moves[d+1+l+"'"] = filterChanged(a = this.rotate(a, i, d));
 			}
 		});
-		this.show(this.fastRotate(this.initialState, this.moves["L2"]));
 	}
 	rotate(stickers, face, depth) {
 		let pos = this.faceInfo[face].coord > 0;
@@ -881,14 +880,6 @@ class Solver {
 		for (let i in changes) stickers[i] = this.buffer[changes[i]];
 		return stickers;
 	}
-	show(stickers) {
-		let s = stickers.concat();
-		FACES.forEach((f, i)=>{
-			i = this.faceInfo[i];
-			let facePieces = pieces.filter(p=>p[i.axis[0]] == i.coord*this.max).sort((a,b)=>(a[i.axis[2]]-b[i.axis[2]] || a[i.axis[1]]-b[i.axis[1]])*i.coord);
-			facePieces.forEach(p=>p.s[f.name].className = "sticker "+FACES[s.shift()].color);
-		});
-	}
 	solved(stickers) {
 		for (let i=0 ; i<6 ; i+=2) {
 			for (let j=1 ; j<this.faceLength ; j++) {
@@ -922,15 +913,16 @@ class Solver {
 					let i=1e3;
 					while (!solved && i--) solved = step();
 				} while (!solved && performance.now()-start < 20);
-				console.log(tree.length);
 				if (solved) resolve(tree.map(i=>moveNames[i]).join(" ").replaceAll("1",""));
-				else setTimeout(loop, 0);
+				else if (tree.length < 6) setTimeout(loop, 0);
+				else reject("more than 5 moves");
 			}
 			if (this.solved(this.initialState)) resolve("");
 			else loop();
 		}).finally(_=>{let ms=performance.now()-start, s=1e3, m=s*60, h=m*60; console.log((ms/h|0)+"h", ((ms%h)/m|0)+"m", ((ms%m)/s|0)+"s"); });
 	}
 }
+cube.ondblclick = _=> new Solver(pieces).brute().then(applyMoves);
 
 function benchmark(functions, iterations = 1, iterationsTotal = 1) {
 	let times = {}, i = iterationsTotal, name;
