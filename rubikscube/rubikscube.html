@@ -896,8 +896,8 @@ class Solver {
 				let i, l = tree.length;
 				next: while (1) {
 					i = 0;
-					while(++tree[i]>=moveLength) { tree[i]=0; i++; if (i==l) tree[l++]=0; }
-					for (let j=0 ; j<i+1 && j<l-1 ; j++) if (tree[j] == tree[j+1] || moveNames[tree[j]].slice(0,2) == moveNames[tree[j+1]].slice(0,2)) continue next;
+					while(++tree[i]>=moveLength) { tree[i]=0; i++; if (i==l) tree[l++]=-1; }
+					for (let j=0 ; j<l-1 ; j++) if (tree[j] == tree[j+1] || moveNames[tree[j]].slice(0,2) == moveNames[tree[j+1]].slice(0,2)) continue next;
 					break;
 				}
 				let path = tree.concat(), state;
@@ -913,7 +913,7 @@ class Solver {
 					let i=1e3;
 					while (!solved && i--) solved = step();
 				} while (!solved && performance.now()-start < 20);
-				if (solved) resolve(tree.map(i=>moveNames[i]).join(" ").replaceAll("1",""));
+				if (solved) console.log(tree.map(i=>moveNames[i])), resolve(tree.map(i=>moveNames[i]).join(" ").replaceAll("1","").replaceAll(/2(\w)/g, (_,l)=>l.toLowerCase()));
 				else if (tree.length < 6) setTimeout(loop, 0);
 				else reject("more than 5 moves");
 			}
