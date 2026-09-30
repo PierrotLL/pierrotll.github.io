@@ -897,7 +897,7 @@ class Solver {
 				next: while (1) {
 					i = 0;
 					while(++tree[i]>=moveLength) { tree[i]=0; i++; if (i==l) tree[l++]=-1; }
-					for (let j=0 ; j<l-1 ; j++) if (tree[j] == tree[j+1] || moveNames[tree[j]].slice(0,2) == moveNames[tree[j+1]].slice(0,2)) continue next;
+					for (let j=1 ; j<l ; j++) if (tree[j] == tree[j-1] || moveNames[tree[j]].slice(0,2) == moveNames[tree[j-1]].slice(0,2)) continue next;
 					break;
 				}
 				let path = tree.concat(), state;
@@ -922,7 +922,7 @@ class Solver {
 		}).finally(_=>{let ms=performance.now()-start, s=1e3, m=s*60, h=m*60; console.log((ms/h|0)+"h", ((ms%h)/m|0)+"m", ((ms%m)/s|0)+"s"); });
 	}
 }
-cube.ondblclick = _=> new Solver(pieces).brute().then(applyMoves);
+cube.ondblclick = _=> { helper.hide(); window.applyMoves=applyMoves; new Solver(pieces).brute().then(s=>s && helper.show("Solution : <button onclick=\"applyMoves(this.innerText)\">"+s+"</button>")); }
 
 function benchmark(functions, iterations = 1, iterationsTotal = 1) {
 	let times = {}, i = iterationsTotal, name;
