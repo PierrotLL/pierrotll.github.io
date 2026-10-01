@@ -923,7 +923,14 @@ class Solver {
 	}
 }
 let solver;
-cube.ondblclick = _=> { if (solver) return; helper.show("Thinking..."); window.applyMoves=applyMoves; solver = new Solver(pieces).brute().finally(_=>solver=null).then(s=>s && helper.show("Solution : <button onclick=\"applyMoves(this.innerText);this.onclick=null\">"+s+"</button>"), e=>helper.show("Failed : "+e)); }
+cube.ondblclick = _=> {
+	if (solver) return;
+	if (!helper.piecesOriented(pieces)) helper.show("Thinking...");
+	window.applyMoves=applyMoves;
+	solver = new Solver(pieces).brute()
+		.then(s=>s && helper.show("Solution : <button onclick=\"applyMoves(this.innerText);this.onclick=null\">"+s+"</button>"), e=>helper.show("Failed : "+e))
+		.finally(_=>solver=null)
+}
 
 function benchmark(functions, iterations = 1, iterationsTotal = 1) {
 	let times = {}, i = iterationsTotal, name;
