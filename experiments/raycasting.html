@@ -1,154 +1,196 @@
 <!doctype html>
 <meta name="viewport" content="width=device-width,initial-scale=1.0" />
 <style>
-	* { margin: 0; padding: 0; border: 0; }
-	html, body { width: 100vw; height: 100svh; }
-	canvas { display: block; }
+	body { margin: 0; width: 100%; height: 100svh; contain: strict; }
 </style>
-<canvas id="canvas"></canvas>
-<div hidden>
-	<img id="img_wall" src="wall.png" />
-</div>
+<canvas id="display"></canvas>
 <script>
-function resize() {
-	canvas.width = window.innerWidth
-	canvas.height = window.innerHeight
+const CIRCLE = Math.PI*2;
+
+function rotateVector(x, y, angle) {
+	let cos = Math.cos(angle), sin = Math.sin(angle);
+	return [x * cos - y * sin, x * sin + y * cos];
 }
-window.addEventListener('resize', resize, false)
-resize()
 
-let keys = {}
-document.onkeydown = e => keys[e.key] = 1
-document.onkeyup = e => keys[e.key] = 0
-
-let startX, startY;
-addEventListener("touchstart", e => [startX, startY] = [e.touches[0].clientX, e.touches[0].clientY])
-addEventListener("touchmove", e => {
-	e.preventDefault();
-	keys = {};
-	let [dx, dy] = [e.touches[0].clientX - startX, e.touches[0].clientY - startY];
-	if (Math.abs(dx) > 50) keys[dx<0 ? "ArrowLeft" : "ArrowRight"] = 1
-	if (Math.abs(dy) > 50) keys[dy<0 ? "ArrowUp" : "ArrowDown"] = 1
-}, {passive: false})
-addEventListener("touchend", _=> {keys = {}; startX=startY=undefined })
-
-
-let map = {
-	width: 50,
-	height: 50,
-	cells: [],
-	init: function() {
-		for (let i=0 ; i<map.width*map.height ; i++) {
-			map.cells[i] = Math.random() < 0.3 ? 1 : 0
-		}
-		let startingPoint = Math.floor(map.height/2) * map.width + Math.floor(map.width/2);
-		map.cells[startingPoint] = map.cells[startingPoint+1] = 0;
-	},
-	inBounds: (x, y) => x>=0 && x<map.width && y>=0 && y<map.height,
-	get: (x, y) => map.inBounds(x, y) ? map.cells[Math.floor(y) * map.width + Math.floor(x)] : 1
+class Bitmap {
+	constructor(url) {
+		this.img = new Image;
+		this.img.onload = _=> { this.width = this.img.width; this.height = this.img.height; }
+		this.img.src = url;
+	}
 }
-map.init()
 
+class Controls {
+	constructor() {
+		this.state = {};
+		this.keys = {"ArrowLeft":"left", "ArrowRight":"right", "ArrowUp":"forward", "ArrowDown":"backward"};
+		addEventListener("keydown", e => this.state[this.keys[e.key]] = true);
+		addEventListener("keyup", e => this.state[this.keys[e.key]] = false);
+		addEventListener("touchstart", e => { this.startX = e.touches[0].clientX; this.startY = e.touches[0].clientY });
+		addEventListener("touchmove", e => {
+			e.preventDefault();
+			this.state = {};
+			let dx = e.touches[0].clientX - this.startX, dy = e.touches[0].clientY - this.startY;
+			if (Math.abs(dx) > 50) this.state[dx<0 ? "left" : "right"] = true;
+			if (Math.abs(dy) > 50) this.state[dy<0 ? "forward" : "backward"] = true;
+		}, {passive: false})
+		addEventListener("touchend", _=> this.state = {});
+	}
+}
 
-let player = {
-	x: Math.floor(map.width/2) + .5,
-	y: Math.floor(map.height/2) + .5,
-	angle: 0,
-	speed: 0.07,
-	
-	move: function(elapsed) {
-		if (keys["ArrowRight"] ^ keys["ArrowLeft"]) {
-			let dir = keys["ArrowRight"] ? 1 : -1
-			if (keys["ArrowUp"]) dir *= .7;
-			player.angle = (player.angle + dir * player.speed + Math.PI*2) % (Math.PI*2)
+class Map {
+	constructor(dimention) {
+		this.width = dimention;
+		this.height = dimention;
+		this.data = [];
+	}
+	randomize(wallFrequency) {
+		for (let i=0 ; i<this.width*this.height ; i++) this.data[i] = Math.random() < wallFrequency ? 2 : 0;
+	}
+	inBounds(x, y) {
+		return x>=0 && x<this.width && y>=0 && y<this.height;
+	}
+	get(x, y) {
+		return this.inBounds(x, y) ? this.data[Math.floor(y) * this.width + Math.floor(x)] : 1;
+	}
+}
+
+class Camera {
+	constructor(x, y, angle) {
+		this.x = x;
+		this.y = y;
+		this.dirX = Math.cos(angle);
+		this.dirY = Math.sin(angle);
+		this.moveSpeed = 2; // cells per sec
+		this.turnSpeed = 3; // rad per sec
+		this.radius = .2; // minimum distance to walls
+		this.fov = Math.PI/2;
+	}
+	resize(width, height) {
+		[this.planeX, this.planeY] = rotateVector(this.dirX, this.dirY, -Math.PI/2);
+		this.planeX *= width/height*.5;
+		this.planeY *= width/height*.5;
+	}
+	rotate(angle) {
+		[this.dirX, this.dirY] = rotateVector(this.dirX, this.dirY, angle);
+		[this.planeX, this.planeY] = rotateVector(this.planeX, this.planeY, angle);
+	}
+	move(controls, map, seconds) {
+		if (controls.state.left ^ controls.state.right) {
+			let dir = controls.state.left ? 1 : -1;
+			if (controls.state.forward) dir *= .7;
+			this.rotate(this.turnSpeed * dir * seconds);
 		}
-		if (keys["ArrowUp"] ^ keys["ArrowDown"]) {
-			let dir = keys["ArrowUp"] ? 1 : -1
-			let dx = dir * player.speed * Math.cos(player.angle)
-			let dy = dir * player.speed * Math.sin(player.angle)
-			if (map.get(player.x+dx+(dx<0?-.2:.2), player.y)) player.x = dx<0 ? Math.floor(player.x)+.2 : Math.ceil(player.x)-.2
-			else player.x += dx
-			if (map.get(player.x, player.y+dy+(dy<0?-.2:.2))) player.y = dy<0 ? Math.floor(player.y)+.2 : Math.ceil(player.y)-.2
-			else player.y += dy
+		if (controls.state.forward ^ controls.state.backward) {
+			let dir = controls.state.forward ? 1 : -1;
+			let dx = this.dirX * dir * this.moveSpeed * seconds;
+			let dy = this.dirY * dir * this.moveSpeed * seconds;
+			if (map.get(this.x+dx+this.radius*(dx<0?-1:1), this.y)) this.x = dx<0 ? Math.floor(this.x)+this.radius : Math.ceil(this.x)-this.radius;
+			else this.x += dx;
+			if (map.get(this.x, this.y+dy+this.radius*(dy<0?-1:1))) this.y = dy<0 ? Math.floor(this.y)+this.radius : Math.ceil(this.y)-this.radius;
+			else this.y += dy;
 		}
 	}
 }
 
-let ray = {
-	distanceSquare: (x1,y1,x2,y2) => (x1-x2)*(x1-x2)+(y1-y2)*(y1-y2),
-	cast: function(x, y, a) {
-		let cos = Math.cos(a)
-		let sin = Math.sin(a)
-		let tan = sin / cos
-		let up = sin<0
-		let left = cos<0
-		
-		//horizontal
-		let yh = Math.floor(y) + (up?0:1)
-		let xh = x + (yh-y) / tan
-		let dx = 1/tan * (up?-1:1)
-		while (!map.get(Math.floor(xh), yh - (up?1:0))) {
-			xh += dx
-			yh += up ? -1 : 1
+class Renderer {
+	constructor() {
+		this.ctx = display.getContext("2d");
+		this.assets = {
+			wall: new Bitmap("wall.jpg"),
+			sky: new Bitmap("sky.avif")}
+	}
+	drawSky(camera) {
+		this.ctx.clearRect(0,0,display.width, display.height);
+		let sky = this.assets.sky,
+			width = display.height * sky.width / sky.height * 6,
+			left = (Math.atan2(camera.dirY, camera.dirX) - Math.PI) / CIRCLE * width;
+		this.ctx.drawImage(sky.img, left, 0, width, display.height);
+		if (left < width - display.width) this.ctx.drawImage(sky.img, left+width-1, 0, width, display.height);
+	}
+	drawWalls(camera, map) {
+		let width = display.width, height = display.height;
+		for (let i=0 ; i<width ; i++) {
+			let ray = castRay(map, camera, i);
+			this.drawColumn(i, 1, height/ray.dist, ray.face, ray.wallX);
 		}
-		let hDistance = ray.distanceSquare(x, y, xh, yh)
-		
-		//vertical
-		let xv = Math.floor(x) + (left?0:1)
-		let yv = y + (xv-x)*tan
-		let dy = tan * (left?-1:1)
-		while (!map.get(xv - (left?1:0), Math.floor(yv))) {
-			xv += left ? -1 : 1
-			yv += dy
-		}
-		let vDistance = ray.distanceSquare(x, y, xv, yv)
-		let distance = Math.sqrt(Math.min(hDistance, vDistance))
-		
-		let wallX
-		if (hDistance < vDistance) {
-			wallX = up ? xh - Math.floor(xh) : Math.ceil(xh) - xh
+	}
+	drawColumn(x, width, height, face, textureX) {
+		let wall = this.assets.wall;
+		let top = (display.height-height)*.5;
+		this.ctx.save();
+		this.ctx.drawImage(wall.img, (wall.width-1)*textureX, 0, 1, wall.height, x, top, width, height);
+		this.ctx.fillStyle = ["#83511055", "#d9861a55", "#ad6b1555", "#ad6b1555"][face];
+		this.ctx.fillRect(x, top, width, height);
+		this.ctx.fillStyle = "rgba(0,0,0,"+Math.min(Math.max(1-height/display.height*5, 0), .8).toFixed(3)+")";
+		this.ctx.fillRect(x, top, width, height);
+		this.ctx.restore();
+	}
+	render(camera, map) {
+		this.drawSky(camera);
+		this.drawWalls(camera, map);
+	}
+}
+
+function castRay(map, camera, column) {
+	let mapX = camera.x|0, mapY = camera.y|0;
+	let cameraX = 2 * column/display.width - 1;
+	let rayX = camera.dirX + camera.planeX * cameraX;
+	let rayY = camera.dirY + camera.planeY * cameraX;
+	let deltaX = 1 / Math.abs(rayX), deltaY = 1 / Math.abs(rayY);
+	let sideX = (rayX<0 ? camera.x - mapX : mapX + 1 - camera.x) * deltaX, sideY = (rayY<0 ? camera.y - mapY : mapY + 1 - camera.y) * deltaY;
+	let stepX = rayX<0 ? -1 : 1, stepY = rayY<0 ? -1 : 1;
+	let hit = 0, side;
+	while (!hit) {
+		if (sideX < sideY) {
+			sideX += deltaX;
+			mapX += stepX;
+			side = 0;
 		} else {
-			wallX = left ? Math.ceil(yv) - yv : yv - Math.floor(yv)
+			sideY += deltaY;
+			mapY += stepY;
+			side = 1;
 		}
-		return { distance: distance, wallX: wallX }
+		hit = map.get(mapX, mapY);
+	}
+	let dist = side ? sideY - deltaY : sideX - deltaX;
+	let face = (1-side) * 2 + ((side ? stepY : stepX) > 0); //0=North, 1=South, 2=Est, 3=West
+	let wallX = (side ? camera.x + dist * rayX : camera.y + dist * rayY) % 1;
+	return { column:column, x:mapX, y:mapY, dist:dist, type:hit, face:face, wallX:wallX };
+}
+
+
+class Game {
+	constructor() {
+		this.map = new Map(50);
+		this.map.randomize(.35);
+		this.controls = new Controls();
+		this.camera = new Camera(Math.floor(this.map.width/2)+.5, Math.floor(this.map.height/2)+.5, 0);
+		this.renderer = new Renderer();
+		this.frame = this.frame.bind(this);
+	}
+	start() {
+		requestAnimationFrame(this.frame);
+	}
+	frame(now) {
+		let seconds = (now - this.lastFrame) * .001;
+		this.lastFrame = now;
+		if (seconds < .5) this.camera.move(this.controls, this.map, seconds);
+		this.renderer.render(this.camera, this.map);
+		requestAnimationFrame(this.frame);
 	}
 }
 
-let ctx = canvas.getContext('2d')
-let draw = {
-	clear: function () {
-		ctx.clearRect(0, 0, canvas.width, canvas.height)
-	},
-	rect: function (x, y, w, h, color) {
-		ctx.fillStyle = color
-		ctx.fillRect(x, y, w, h)
-	},
-	sky: function(player) {
-		draw.rect(0, 0, canvas.width, Math.floor(canvas.height/2), 'skyblue')
-	},
-	ground: function(player) {
-		draw.rect(0, Math.floor(canvas.height/2), canvas.width, Math.ceil(canvas.height/2), 'darkgreen')
-	},
-	walls: function(player) {
-		const FOV = Math.PI/2
-		const fov_ratio = Math.cos(FOV/2) / Math.sin(FOV/2)
-		for (let i=0 ; i<canvas.width ; i++) {
-			let angle = player.angle + Math.atan2(i - canvas.width/2, canvas.width/2*fov_ratio)
-			let r = ray.cast(player.x, player.y, angle)
-			let wallHeight = canvas.height/2/r.distance / Math.cos(angle - player.angle)
-			draw.wall(i, wallHeight, r.wallX)
-		}
-	},
-	wall: function(x, wallHeight, wallX) {
-		ctx.drawImage(img_wall, (img_wall.width-1)*wallX, 0, 1, img_wall.height, x, (canvas.height-wallHeight)/2, 1, wallHeight)
-	}
+let game = new Game();
+function resize() {
+	let w = innerWidth, h = innerHeight, r = w/h;
+	//display.width = Math.min(w, 500);
+	display.width = w;
+	display.height = display.width/r;
+	display.style.width = w+"px";
+	game.camera.resize(w, h);
 }
-
-setInterval(function() {
-	player.move()
-	draw.clear()
-	draw.sky(player)
-	draw.ground(player)
-	draw.walls(player)
-}, 30)
+addEventListener("resize", resize);
+resize();
+game.start();
 </script>
