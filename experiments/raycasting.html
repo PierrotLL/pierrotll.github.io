@@ -62,7 +62,7 @@ class Camera {
 		this.dirX = Math.cos(angle);
 		this.dirY = Math.sin(angle);
 		this.moveSpeed = 2; // cells per sec
-		this.turnSpeed = 3; // rad per sec
+		this.turnSpeed = 2; // rad per sec
 		this.radius = .2; // minimum distance to walls
 		this.fov = Math.PI/2;
 	}
@@ -97,33 +97,44 @@ class Renderer {
 	constructor() {
 		this.ctx = display.getContext("2d");
 		this.assets = {
-			wall: new Bitmap("wall.jpg"),
+			wall: new Bitmap("wall.webp"),
 			sky: new Bitmap("sky.avif")}
+	}
+	resize(width, height) {
+		this.width = width;
+		this.height = height;
+	}
+	drawGround() {
+		let gradient = this.ctx.createLinearGradient(0, this.height, 0, this.height*.5);
+		gradient.addColorStop(0, "#026802");
+		gradient.addColorStop(1, "#084509");
+		this.ctx.fillStyle = gradient;
+		this.ctx.fillRect(0, this.height*.5, this.width, this.height);
 	}
 	drawSky(camera) {
 		let sky = this.assets.sky,
-			width = display.height * sky.width / sky.height * 6,
+			width = this.height*.5 * sky.width / sky.height * 6,
 			left = (Math.atan2(camera.dirY, camera.dirX) - Math.PI) / CIRCLE * width;
-		this.ctx.drawImage(sky.img, left, 0, width, display.height);
-		if (left < width - display.width) this.ctx.drawImage(sky.img, left+width-1, 0, width, display.height);
+		this.ctx.drawImage(sky.img, left, 0, width, this.height*.5);
+		if (left < width - this.width) this.ctx.drawImage(sky.img, left+width-1, 0, width, this.height*.5);
 	}
 	drawWalls(camera, map) {
-		let width = display.width, height = display.height;
-		for (let i=0 ; i<width ; i++) {
+		for (let i=0 ; i<this.width ; i++) {
 			let ray = castRay(map, camera, i);
-			this.drawColumn(i, 1, height/ray.dist, ray.face, ray.wallX);
+			this.drawColumn(i, 1, this.height/ray.dist, ray.face, ray.wallX);
 		}
 	}
 	drawColumn(x, width, height, face, textureX) {
 		let wall = this.assets.wall;
-		let top = (display.height-height)*.5;
+		let top = (this.height-height)*.5;
 		this.ctx.drawImage(wall.img, (wall.width-1)*textureX, 0, 1, wall.height, x, top, width, height);
 		this.ctx.fillStyle = ["#83511055", "#d9861a55", "#ad6b1555", "#ad6b1555"][face];
 		this.ctx.fillRect(x, top, width, height);
-		this.ctx.fillStyle = "rgba(0,0,0,"+Math.min(Math.max(1-height/display.height*5, 0), .8).toFixed(3)+")";
+		this.ctx.fillStyle = "rgba(0,0,0,"+Math.min(Math.max(1-height/this.height*5, 0), .8).toFixed(3)+")";
 		this.ctx.fillRect(x, top, width, height);
 	}
 	render(camera, map) {
+		this.drawGround();
 		this.drawSky(camera);
 		this.drawWalls(camera, map);
 	}
@@ -160,7 +171,7 @@ function castRay(map, camera, column) {
 class Game {
 	constructor() {
 		this.map = new Map(50);
-		this.map.randomize(.35);
+		this.map.randomize(.3);
 		this.controls = new Controls();
 		this.camera = new Camera(Math.floor(this.map.width/2)+.5, Math.floor(this.map.height/2)+.5, 0);
 		this.renderer = new Renderer();
@@ -181,11 +192,13 @@ class Game {
 let game = new Game();
 function resize() {
 	let w = innerWidth, h = innerHeight, r = w/h;
-	//display.width = Math.min(w, 500);
+	w = Math.min(w, 2000);
+	h = w/r;
 	display.width = w;
-	display.height = display.width/r;
-	display.style.width = w+"px";
+	display.height = h;
+	display.style.width = innerWidth+"px";
 	game.camera.resize(w, h);
+	game.renderer.resize(w, h);
 }
 addEventListener("resize", resize);
 resize();
