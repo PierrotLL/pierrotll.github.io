@@ -329,7 +329,7 @@ scene.addEventListener("wheel", e => rotateCube(rotation, tilt, scale - e.deltaY
 const touch = {};
 function touchstart(e) {
 	if (touch.down) touchend();
-	if (e.touches && e.touches.length > 1) {
+	if (e.touches?.length > 1) {
 		touch.startX = touch.lastX = [e.touches[0].clientX, e.touches[1].clientX];
 		touch.startY = touch.lastY = [e.touches[0].clientY, e.touches[1].clientY];
 	} else if (e.touches || e.buttons == 1) {
@@ -342,7 +342,7 @@ function touchstart(e) {
 	}
 }
 function touchmove(e) {
-	if (e.touches && e.touches.length > 1) {
+	if (e.touches?.length > 1) {
 		let distance = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
 		let previous = Math.hypot(touch.lastX[0] - touch.lastX[1], touch.lastY[0] - touch.lastY[1]);
 		rotateCube(rotation, tilt, scale * ((distance / previous - 1) * .5 + 1));
@@ -350,8 +350,8 @@ function touchmove(e) {
 		touch.lastY = [e.touches[0].clientY, e.touches[1].clientY];
 	} else if (touch.down) {
 		if (e.touches) e.preventDefault(); // prevent refresh on mobile
-		e.x ||= e.touches ? e.touches[0].clientX : 0;
-		e.y ||= e.touches ? e.touches[0].clientY : 0;
+		e.x ||= e.touches?.[0].clientX;
+		e.y ||= e.touches?.[0].clientY;
 		if (touch.face && !touch.piecesRotationDisabled) {
 			let vector = screenToSceneVector(e.x - touch.startX, e.y - touch.startY);
 			touch.axis ||= Math.hypot.apply(null, vector)*touch.pxToAngle > 5 ? getMoveAxis(touch.face.classList[1], vector) : null;
@@ -762,7 +762,7 @@ function fpsCounter(now) {
 		slowFrames++;
 		if (slowFrames == 5 && !cube.classList.contains("flat")) {
 			cube.classList.add("flat");
-			helper.show("Low framerate detected.<br>Switched to simpler graphics mode.");
+			helper.show("Low framerate detected.<br>Switched to light graphics mode.");
 		}
 	} else slowFrames=0;
 	last = now;
