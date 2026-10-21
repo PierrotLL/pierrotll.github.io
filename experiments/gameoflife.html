@@ -29,14 +29,14 @@ function set(x, y, v) {
 	}
 }
 function step() {
-	let prox = [];
+	let prox = [], px_total = PX_WIDTH * PX_HEIGHT;
 	for (let i = 0, l = cells.length ; i<l ; i++) {
 		if (cells[i]) {
 			let x = i%INT_WIDTH*31, y = i/INT_WIDTH|0, n = cells[i], bit = 30;
 			while (n) {
 				if (n & 1) for (let d=0 ; d<9 ; d++) {
-					let j = (y-1+(d/3|0))*PX_WIDTH + (x+bit+d%3-1);
-					if (j>=0) prox[j] = (prox[j]|0) + (d!=4);
+					let j = ((y-1+(d/3|0))*PX_WIDTH + (x+bit+d%3-1) + px_total) % px_total;
+					prox[j] = (prox[j]|0) + (d!=4);
 				}
 				n >>= 1;
 				bit--;
