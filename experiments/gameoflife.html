@@ -64,11 +64,6 @@ function init() {
 		y++;
 		p += p>0 ? 1-2*x+2*y : 1+2*y;
 	}
-	/*for (let x=0 ; x<w ; x++) {
-		for (let y=0 ; y<h ; y++) {
-			if (Math.random()<.4) set(x+(PX_WIDTH-w)/2, y+(PX_HEIGHT-h)/2, 1);
-		}
-	}*/
 }
 function loop() {
 	step();
@@ -76,9 +71,5 @@ function loop() {
 	requestAnimationFrame(loop);
 }
 init();
-step();
-step();
-step();
-display();
-//loop();
+loop();
 </script>
